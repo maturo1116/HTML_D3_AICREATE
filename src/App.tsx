@@ -258,6 +258,7 @@ HOLD：いまのブロックを保存し、あとで使えます。
     description: "",
     controls: "",
   },
+]; 
 
 function App() {
   const [selected, setSelected] = useState<Game | null>(null);
