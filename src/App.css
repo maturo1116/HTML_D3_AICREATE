@@ -342,3 +342,54 @@ main {
     transform: none;
   }
 }
+
+.game-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
+  gap: 24px;
+  align-items: start;
+  width: 100%;
+}
+
+.game-main {
+  min-width: 0;
+}
+
+.game-layout .game-frame {
+  display: block;
+  width: 100%;
+  height: 70vh;
+  min-height: 450px;
+  border: none;
+  background: #000;
+}
+
+.game-layout .game-toolbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.game-layout .details {
+  min-width: 0;
+  margin: 0;
+  padding: 20px;
+  overflow-wrap: anywhere;
+}
+
+.game-layout .controls {
+  white-space: pre-wrap;
+}
+
+@media (max-width: 768px) {
+  .game-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .game-layout .game-frame {
+    height: 60vh;
+    min-height: 350px;
+  }
+}
+

@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import "./App.css";
 
@@ -221,7 +222,7 @@ HOLD：いまのブロックを保存し、あとで使えます。
 
 予算（Budget）管理
 
-ステージモードでは限られた所持金の中で最適な兵種バランスを考えるのが勝利への近道です。`,
+ステージモードでは限られた所持金の中で最適な兵種バランスを考えるのが勝利への近道。`,
   },
   {
     name: "爆弾仕分けゲーム",
@@ -258,7 +259,7 @@ HOLD：いまのブロックを保存し、あとで使えます。
     description: "",
     controls: "",
   },
-]; 
+];
 
 function App() {
   const [selected, setSelected] = useState<Game | null>(null);
@@ -282,35 +283,35 @@ function App() {
   return (
     <main>
       {selected ? (
-        <>
-          <div className="game-toolbar">
-            <button
-              className="toolbar-button"
-              onClick={() => setSelected(null)}
-            >
-              ← 一覧
-            </button>
+        <div className="game-layout">
+          <section className="game-main">
+            <iframe
+              className="game-frame"
+              src={selected.file}
+              title={selected.name}
+              allow="fullscreen"
+              allowFullScreen
+            />
 
-            <h1>{selected.name}</h1>
+            <div className="game-toolbar">
+              <button
+                className="toolbar-button"
+                onClick={() => setSelected(null)}
+              >
+                ← 一覧
+              </button>
 
-            <button
-              className="toolbar-button"
-              onClick={enterFullscreen}
-            >
-              ⛶ 全画面
-            </button>
-          </div>
-
-          <iframe
-            className="game-frame"
-            src={selected.file}
-            title={selected.name}
-            allow="fullscreen"
-            allowFullScreen
-          />
+              <button
+                className="toolbar-button"
+                onClick={enterFullscreen}
+              >
+                ⛶ 全画面
+              </button>
+            </div>
+          </section>
 
           <section className="details">
-            <h2>ゲーム情報</h2>
+            <h1>{selected.name}</h1>
 
             <p>
               <strong>製作者：</strong>
@@ -327,7 +328,7 @@ function App() {
               {selected.controls || "未登録"}
             </p>
           </section>
-        </>
+        </div>
       ) : (
         <>
           <h1 className="library-title">ゲームライブラリ</h1>
