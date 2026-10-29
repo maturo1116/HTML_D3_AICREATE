@@ -1,0 +1,1438 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Ragdoll Battle Simulator 2D</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+            background-color: #1a1a1a;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            background-color: #4CAF50;
+        }
+        /* UI Layer overrides to keep UI completely separate from camera scale/zoom */
+        #uiContainer {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 10;
+            transform: none !important;
+            zoom: 1 !important;
+        }
+        .glass-panel {
+            background: rgba(20, 20, 20, 0.75);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+        .btn-bounce {
+            transition: transform 0.1s ease, background-color 0.2s ease;
+        }
+        .btn-bounce:active {
+            transform: scale(0.92);
+        }
+        /* スクロールバー非表示 */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+<body class="text-white">
+
+    <!-- CANVAS -->
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- UI LAYER -->
+    <div id="uiContainer" class="absolute inset-0 pointer-events-none flex flex-col justify-between p-3">
+
+        <!-- HEADER BAR -->
+        <div class="flex justify-between items-center pointer-events-auto">
+            <!-- BACK / TITLE -->
+            <div class="flex items-center gap-2">
+                <button id="btnBackToMenu" class="btn-bounce glass-panel px-3 py-2 rounded-xl text-sm font-bold flex items-center gap-1 hover:bg-white/20">
+                    <i class="fa-solid fa-arrow-left"></i> メニュー
+                </button>
+                <div id="stageInfo" class="glass-panel px-3 py-2 rounded-xl text-sm font-bold text-yellow-300 hidden">
+                    ステージ 1
+                </div>
+            </div>
+
+            <!-- BUDGET & STATUS -->
+            <div id="budgetDisplay" class="glass-panel px-4 py-2 rounded-xl text-sm font-black flex items-center gap-3">
+                <div id="redBudgetText" class="text-red-400">赤軍: ∞</div>
+                <div id="blueBudgetText" class="text-blue-400">青軍: ∞</div>
+            </div>
+
+            <!-- CONTROLS & SETTINGS -->
+            <div class="flex items-center gap-2">
+                <!-- モード切替ボタン (3段階: カメラ移動 -> 兵士配置 -> 範囲削除) -->
+                <button id="btnToggleMode" class="btn-bounce glass-panel px-3 py-2 rounded-xl text-xs font-bold text-yellow-300 hover:bg-white/20 flex items-center gap-1.5">
+                    <i class="fa-solid fa-hand"></i> カメラ移動
+                </button>
+                <button id="btnSettings" class="btn-bounce glass-panel p-2 rounded-xl hover:bg-white/20">
+                    <i class="fa-solid fa-gear text-lg"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- BATTLE CONTROLS (Top Floating) -->
+        <div id="battleUI" class="hidden pointer-events-auto absolute top-16 left-1/2 transform -translate-x-1/2 flex items-center gap-2 glass-panel p-1.5 rounded-2xl">
+            <button id="btnSpeed" class="btn-bounce bg-gray-700/80 px-3 py-1.5 rounded-xl font-bold text-xs hover:bg-gray-600">
+                速度: 1.0x
+            </button>
+            <button id="btnPause" class="btn-bounce bg-yellow-600 px-3 py-1.5 rounded-xl font-bold text-xs hover:bg-yellow-500">
+                <i class="fa-solid fa-pause"></i> 一時停止
+            </button>
+        </div>
+
+        <!-- BOTTOM PLACEMENT BAR -->
+        <div id="placementBar" class="pointer-events-auto flex flex-col items-center gap-2 mb-1">
+            <!-- Team Switcher (Sandbox only) -->
+            <div id="teamSwitchContainer" class="flex gap-2 glass-panel p-1 rounded-xl">
+                <button id="btnSelectRed" class="btn-bounce px-4 py-1 rounded-lg text-xs font-bold bg-red-600 text-white shadow-lg">
+                    赤軍 (味方)
+                </button>
+                <button id="btnSelectBlue" class="btn-bounce px-4 py-1 rounded-lg text-xs font-bold bg-gray-700 text-gray-300 hover:bg-gray-600">
+                    青軍 (敵)
+                </button>
+            </div>
+
+            <!-- Unit Palette & Actions -->
+            <div class="w-full max-w-2xl flex items-center gap-2">
+                <div id="unitPalette" class="glass-panel flex-1 flex items-center gap-2 p-2 rounded-2xl overflow-x-auto no-scrollbar">
+                    <!-- Dynamic Units Injection -->
+                </div>
+
+                <div class="flex flex-col gap-1">
+                    <button id="btnClear" class="btn-bounce glass-panel p-2.5 rounded-xl text-xs font-bold text-red-400 hover:bg-red-900/40">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
+                    <button id="btnStartBattle" class="btn-bounce bg-gradient-to-r from-green-500 to-emerald-600 px-4 py-3 rounded-xl text-sm font-black shadow-lg hover:from-green-400 hover:to-emerald-500 active:scale-95">
+                        <i class="fa-solid fa-play"></i> 戦闘
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: MAIN MENU -->
+    <div id="menuModal" class="absolute inset-0 bg-black/80 backdrop-blur-md flex flex-col items-center justify-center p-4 z-50">
+        <div class="text-center mb-8">
+            <h1 class="text-4xl md:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-red-500 via-yellow-400 to-blue-500 tracking-wider drop-shadow-lg">
+                Ragdoll Battle 2D
+            </h1>
+            <p class="text-xs md:text-sm text-gray-400 mt-2">コミカル2D自動戦闘シミュレーター</p>
+        </div>
+
+        <div class="flex flex-col gap-4 w-full max-w-xs">
+            <button id="btnStartSandbox" class="btn-bounce bg-gradient-to-r from-blue-600 to-indigo-600 py-3.5 rounded-2xl font-black text-lg shadow-xl hover:brightness-110">
+                <i class="fa-solid fa-cubes mr-2"></i> サンドボックス
+            </button>
+            <button id="btnStartStage" class="btn-bounce bg-gradient-to-r from-emerald-600 to-teal-600 py-3.5 rounded-2xl font-black text-lg shadow-xl hover:brightness-110">
+                <i class="fa-solid fa-trophy mr-2"></i> ステージモード
+            </button>
+        </div>
+    </div>
+
+    <!-- MODAL: STAGE SELECT -->
+    <div id="stageModal" class="absolute inset-0 bg-black/85 backdrop-blur-md flex flex-col items-center justify-center p-4 z-50 hidden">
+        <h2 class="text-2xl font-black mb-6">ステージ選択</h2>
+        <div id="stageGrid" class="grid grid-cols-2 sm:grid-cols-3 gap-3 w-full max-w-md max-h-80 overflow-y-auto p-2 no-scrollbar">
+            <!-- Dynamic Stages -->
+        </div>
+        <button id="btnCloseStage" class="btn-bounce mt-6 glass-panel px-6 py-2 rounded-xl text-sm font-bold">
+            閉じる
+        </button>
+    </div>
+
+    <!-- MODAL: RESULT -->
+    <div id="resultModal" class="absolute inset-0 bg-black/70 backdrop-blur-sm flex flex-col items-center justify-center p-4 z-40 hidden">
+        <div class="glass-panel p-6 rounded-3xl text-center max-w-xs w-full shadow-2xl border border-white/20">
+            <h2 id="winnerText" class="text-3xl font-black text-yellow-400 mb-2">勝利！</h2>
+            <p id="resultDesc" class="text-xs text-gray-300 mb-6">全ての敵部隊を壊滅させました</p>
+
+            <div class="flex flex-col gap-2">
+                <button id="btnRetry" class="btn-bounce bg-blue-600 py-2.5 rounded-xl font-bold text-sm hover:bg-blue-500">
+                    もう一度再戦
+                </button>
+                <button id="btnNextStage" class="btn-bounce bg-green-600 py-2.5 rounded-xl font-bold text-sm hover:bg-green-500 hidden">
+                    次のステージへ
+                </button>
+                <button id="btnResultMenu" class="btn-bounce bg-gray-700 py-2.5 rounded-xl font-bold text-sm hover:bg-gray-600">
+                    メニューへ戻る
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: SETTINGS & EDITOR (Password Protected: 82016202) -->
+    <div id="settingsModal" class="absolute inset-0 bg-black/85 backdrop-blur-md flex flex-col items-center justify-center p-4 z-50 hidden">
+        <div class="glass-panel p-6 rounded-3xl max-w-lg w-full max-h-[90vh] flex flex-col">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-black text-yellow-400"><i class="fa-solid fa-sliders"></i> 兵士ステータス設定</h2>
+                <button id="btnCloseSettings" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+
+            <!-- Password Lock Overlay -->
+            <div id="passwordSection" class="flex flex-col items-center justify-center py-8 gap-4">
+                <i class="fa-solid fa-lock text-4xl text-yellow-500"></i>
+                <p class="text-xs text-gray-300">ステータスを編集するにはパスワードを入力してください</p>
+                <input id="passInput" type="password" placeholder="パスワード入力" class="bg-gray-800 border border-gray-600 rounded-xl px-4 py-2 text-center text-lg font-mono focus:outline-none focus:border-yellow-500">
+                <button id="btnUnlockSettings" class="btn-bounce bg-yellow-600 px-6 py-2 rounded-xl font-bold text-sm hover:bg-yellow-500">
+                    解除
+                </button>
+                <p id="passError" class="text-xs text-red-500 hidden">パスワードが違います</p>
+            </div>
+
+            <!-- Editor Form (Hidden by default) -->
+            <div id="editorSection" class="hidden flex-1 overflow-y-auto no-scrollbar pr-1 flex flex-col gap-4">
+                <div id="unitEditorList" class="flex flex-col gap-4">
+                    <!-- Dynamic Unit Form Fields -->
+                </div>
+                <div class="pt-2 sticky bottom-0 bg-gray-900/90 pb-1">
+                    <button id="btnSaveSettings" class="btn-bounce w-full bg-gradient-to-r from-green-600 to-emerald-600 py-2.5 rounded-xl font-bold text-sm text-white shadow-lg hover:brightness-110">
+                        <i class="fa-solid fa-floppy-disk mr-1"></i> 設定を保存して反映
+                    </button>
+                    <p id="saveSuccessText" class="text-xs text-green-400 text-center mt-1 hidden">✓ 設定を保存し反映しました！</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- GAME SCRIPT -->
+    <script>
+        // --- 1. DEFAULT GAME DATA ---
+        const DEFAULT_UNITS = {
+            club: { id: "club", name: "棍棒兵", cost: 50, hp: 180, atk: 35, atkInterval: 1.0, speed: 85, range: 45, mass: 1.0, knockbackRes: 0.2, searchRange: Infinity, desc: "安価で大量配置可能な歩兵", color: "#8d5524", arrowSpeed: 280 },
+            sword: { id: "sword", name: "剣士", cost: 100, hp: 260, atk: 55, atkInterval: 0.8, speed: 95, range: 50, mass: 1.2, knockbackRes: 0.4, searchRange: Infinity, desc: "バランスの取れた標準兵士", color: "#b0bec5", arrowSpeed: 280 },
+            shield: { id: "shield", name: "盾兵", cost: 120, hp: 480, atk: 35, atkInterval: 1.0, speed: 70, range: 55, mass: 2.2, knockbackRes: 0.8, searchRange: Infinity, desc: "高い耐久力とシールドバッシュ", color: "#78909c", arrowSpeed: 280 },
+            spear: { id: "spear", name: "槍兵", cost: 150, hp: 220, atk: 60, atkInterval: 0.2, speed: 115, range: 75, mass: 1.1, knockbackRes: 0.3, searchRange: Infinity, desc: "長いリーチで先手攻撃", color: "#a1887f", arrowSpeed: 280 },
+            knight: { id: "knight", name: "騎士", cost: 250, hp: 300, atk: 65, atkInterval: 0.7, speed: 500, range: 60, mass: 2.5, knockbackRes: 0.7, searchRange: Infinity, desc: "馬に乗り圧倒的機動力と突撃力を誇る騎士", color: "#cfd8dc", arrowSpeed: 280 },
+            archer: { id: "archer", name: "弓兵", cost: 180, hp: 130, atk: 80, atkInterval: 2.3, speed: 75, range: 1000, mass: 0.8, knockbackRes: 0.1, searchRange: Infinity, desc: "遠距離狙撃・間合い管理", color: "#5d4037", arrowSpeed: 1000 },
+            giant: { id: "giant", name: "巨人", cost: 1200, hp: 2000, atk: 140, atkInterval: 1.8, speed: 45, range: 60, mass: 6.0, knockbackRes: 0.95, searchRange: Infinity, desc: "広範囲ノックバック攻撃", color: "#4e342e", arrowSpeed: 280 }
+        };
+
+        const STAGES = [
+            { id: 1, name: "ステージ 1: 棍棒兵の群れ", budget: 300, enemies: [{type: 'club', x: 200, y: -50}, {type: 'club', x: 200, y: 0}, {type: 'club', x: 200, y: 50}] },
+            { id: 2, name: "ステージ 2: 盾と剣の陣形", budget: 450, enemies: [{type: 'shield', x: 180, y: 0}, {type: 'sword', x: 240, y: -40}, {type: 'sword', x: 240, y: 40}] },
+            { id: 3, name: "ステージ 3: 弓兵部隊の脅威", budget: 600, enemies: [{type: 'shield', x: 150, y: -30}, {type: 'shield', x: 150, y: 30}, {type: 'archer', x: 280, y: -60}, {type: 'archer', x: 280, y: 60}] },
+            { id: 4, name: "ステージ 4: 槍兵の長城", budget: 700, enemies: [{type: 'spear', x: 160, y: -60}, {type: 'spear', x: 160, y: 0}, {type: 'spear', x: 160, y: 60}, {type: 'archer', x: 260, y: 0}] },
+            { id: 5, name: "ステージ 5: 巨人の進撃", budget: 1000, enemies: [{type: 'giant', x: 220, y: 0}, {type: 'club', x: 160, y: -80}, {type: 'club', x: 160, y: 80}] },
+            { id: 6, name: "ステージ 6: 混成歩兵隊", budget: 800, enemies: [{type: 'sword', x: 180, y: -50}, {type: 'sword', x: 180, y: 50}, {type: 'spear', x: 220, y: 0}, {type: 'club', x: 250, y: -80}, {type: 'club', x: 250, y: 80}] },
+            { id: 7, name: "ステージ 7: 重装壁", budget: 900, enemies: [{type: 'shield', x: 150, y: -80}, {type: 'shield', x: 150, y: 0}, {type: 'shield', x: 150, y: 80}, {type: 'spear', x: 220, y: -40}, {type: 'spear', x: 220, y: 40}] },
+            { id: 8, name: "ステージ 8: 弓兵の大斉射", budget: 1000, enemies: [{type: 'shield', x: 140, y: 0}, {type: 'archer', x: 260, y: -100}, {type: 'archer', x: 260, y: -30}, {type: 'archer', x: 260, y: 30}, {type: 'archer', x: 260, y: 100}] },
+            { id: 9, name: "ステージ 9: 槍兵ラッシュ", budget: 1100, enemies: [{type: 'spear', x: 180, y: -100}, {type: 'spear', x: 180, y: -50}, {type: 'spear', x: 180, y: 0}, {type: 'spear', x: 180, y: 50}, {type: 'spear', x: 180, y: 100}] },
+            { id: 10, name: "ステージ 10: ダブルジャイアント", budget: 1400, enemies: [{type: 'giant', x: 200, y: -70}, {type: 'giant', x: 200, y: 70}] },
+            { id: 11, name: "ステージ 11: 突撃兵団", budget: 1200, enemies: [{type: 'club', x: 150, y: -120}, {type: 'club', x: 150, y: -60}, {type: 'club', x: 150, y: 0}, {type: 'club', x: 150, y: 60}, {type: 'club', x: 150, y: 120}, {type: 'sword', x: 220, y: -40}, {type: 'sword', x: 220, y: 40}] },
+            { id: 12, name: "ステージ 12: 精鋭弓兵護衛隊", budget: 1300, enemies: [{type: 'shield', x: 140, y: -60}, {type: 'shield', x: 140, y: 60}, {type: 'spear', x: 190, y: 0}, {type: 'archer', x: 280, y: -80}, {type: 'archer', x: 280, y: 0}, {type: 'archer', x: 280, y: 80}] },
+            { id: 13, name: "ステージ 13: 鉄壁の陣形", budget: 1500, enemies: [{type: 'shield', x: 150, y: -100}, {type: 'shield', x: 150, y: -30}, {type: 'shield', x: 150, y: 30}, {type: 'shield', x: 150, y: 100}, {type: 'sword', x: 220, y: -50}, {type: 'sword', x: 220, y: 50}] },
+            { id: 14, name: "ステージ 14: 巨人と槍兵隊", budget: 1600, enemies: [{type: 'giant', x: 200, y: 0}, {type: 'spear', x: 240, y: -90}, {type: 'spear', x: 240, y: -30}, {type: 'spear', x: 240, y: 30}, {type: 'spear', x: 240, y: 90}] },
+            { id: 15, name: "ステージ 15: 怒涛の大軍勢", budget: 1800, enemies: [{type: 'club', x: 160, y: -120}, {type: 'club', x: 160, y: -40}, {type: 'club', x: 160, y: 40}, {type: 'club', x: 160, y: 120}, {type: 'sword', x: 220, y: -80}, {type: 'sword', x: 220, y: 0}, {type: 'sword', x: 220, y: 80}, {type: 'archer', x: 300, y: 0}] },
+            { id: 16, name: "ステージ 16: 巨人の3連進撃", budget: 2000, enemies: [{type: 'giant', x: 220, y: -100}, {type: 'giant', x: 200, y: 0}, {type: 'giant', x: 220, y: 100}] },
+            { id: 17, name: "ステージ 17: スナイパーの防衛線", budget: 2200, enemies: [{type: 'shield', x: 140, y: -100}, {type: 'shield', x: 140, y: 0}, {type: 'shield', x: 140, y: 100}, {type: 'archer', x: 300, y: -120}, {type: 'archer', x: 300, y: -60}, {type: 'archer', x: 300, y: 0}, {type: 'archer', x: 300, y: 60}, {type: 'archer', x: 300, y: 120}] },
+            { id: 18, name: "ステージ 18: 精鋭軍団", budget: 2400, enemies: [{type: 'shield', x: 150, y: -60}, {type: 'shield', x: 150, y: 60}, {type: 'spear', x: 200, y: -90}, {type: 'spear', x: 200, y: 0}, {type: 'spear', x: 200, y: 90}, {type: 'sword', x: 250, y: -40}, {type: 'sword', x: 250, y: 40}, {type: 'archer', x: 310, y: 0}] },
+            { id: 19, name: "ステージ 19: 巨人軍団と弓兵", budget: 2800, enemies: [{type: 'giant', x: 200, y: -80}, {type: 'giant', x: 200, y: 80}, {type: 'shield', x: 150, y: 0}, {type: 'archer', x: 290, y: -100}, {type: 'archer', x: 290, y: 0}, {type: 'archer', x: 290, y: 100}] },
+            { id: 20, name: "ステージ 20: 最終決戦（全種勢揃い）", budget: 3500, enemies: [{type: 'giant', x: 220, y: -100}, {type: 'giant', x: 220, y: 100}, {type: 'shield', x: 160, y: -60}, {type: 'shield', x: 160, y: 60}, {type: 'spear', x: 200, y: -120}, {type: 'spear', x: 200, y: 0}, {type: 'spear', x: 200, y: 120}, {type: 'sword', x: 250, y: -50}, {type: 'sword', x: 250, y: 50}, {type: 'archer', x: 320, y: -80}, {type: 'archer', x: 320, y: 0}, {type: 'archer', x: 320, y: 80}] }
+        ];
+
+        // --- 2. UNIT CLASS ---
+        class Unit {
+            constructor(type, team, x, y, spec) {
+                this.id = Math.random().toString(36).substr(2, 9);
+                this.type = type;
+                this.team = team;
+                this.x = x;
+                this.y = y;
+                this.z = 0;
+                this.vx = 0;
+                this.vy = 0;
+                this.vz = 0;
+                this.spec = { ...spec };
+                this.hp = spec.hp;
+                this.angle = team === 'red' ? 0 : Math.PI;
+                this.rotation = 0;
+                this.angularVelocity = 0;
+                this.isDead = false;
+                this.isFallen = false;
+
+                this.walkCycle = Math.random() * Math.PI * 2;
+                this.attackCooldown = 0;
+                this.swingProgress = 0;
+                this.target = null;
+                this.radius = type === 'giant' ? 24 : 12;
+            }
+
+            update(dt, activeUnits, projectiles, effects) {
+                if (this.isDead) {
+                    // 死亡時は慣性減速のみ行い、AI思考や移動ロジックは完全停止
+                    this.updatePhysics(dt);
+                    return;
+                }
+
+                // Cooldowns
+                if (this.attackCooldown > 0) this.attackCooldown -= dt;
+                if (this.swingProgress > 0) this.swingProgress -= dt * 4;
+
+                // Physics (Falling & Knockback)
+                this.updatePhysics(dt);
+
+                // AI Action (Only if active battle mode and not airborne/fallen and NOT dead)
+                if (!this.isDead && !this.isFallen && window.game && window.game.state === 'battle') {
+                    this.updateAI(dt, activeUnits, projectiles, effects);
+                }
+            }
+
+            updatePhysics(dt) {
+                // Apply friction and inertia
+                this.x += this.vx * dt;
+                this.y += this.vy * dt;
+                this.z += this.vz * dt;
+
+                // 死亡時は騎士であっても減速・静止させる
+                if (this.isDead) {
+                    this.vx *= 0.85;
+                    this.vy *= 0.85;
+                } else if (this.type !== 'knight') {
+                    this.vx *= 0.88;
+                    this.vy *= 0.88;
+                }
+
+                if (this.z > 0) {
+                    this.vz -= 980 * dt; // Gravity
+                } else {
+                    this.z = 0;
+                    this.vz = 0;
+                    this.isFallen = false;
+                }
+
+                // Tumble rotation physics
+                this.rotation += this.angularVelocity * dt;
+                this.angularVelocity *= 0.92;
+            }
+
+            resolveUnitCollisions(dt, activeUnits) {
+                if (this.isDead) return;
+
+                // 兵士同士のかさばり（重なり）を解消する衝突判定処理
+                for (let other of activeUnits) {
+                    if (other === this || other.isDead) continue;
+
+                    // 騎士は敵の当たり判定を完全無視して自由に通過可能
+                    if (this.type === 'knight' && other.team !== this.team) continue;
+                    if (other.type === 'knight' && this.team !== other.team) continue;
+
+                    let dx = other.x - this.x;
+                    let dy = other.y - this.y;
+                    let dist = Math.hypot(dx, dy);
+                    let minDist = this.radius + other.radius + 2;
+
+                    if (dist < minDist && dist > 0) {
+                        // 味方同士の場合でも騎士は滑らかに受け流す
+                        if (this.type === 'knight') {
+                            let nx = dx / dist;
+                            let ny = dy / dist;
+                            this.vx -= ny * 150 * dt;
+                            this.vy += nx * 150 * dt;
+                            continue;
+                        }
+
+                        let overlap = (minDist - dist) / 2;
+                        let nx = dx / dist;
+                        let ny = dy / dist;
+
+                        // 質量に応じて押し出し量を計算
+                        let totalMass = (this.spec.mass || 1) + (other.spec.mass || 1);
+                        let ratioThis = (other.spec.mass || 1) / totalMass;
+
+                        this.x -= nx * overlap * ratioThis;
+                        this.y -= ny * overlap * ratioThis;
+                    }
+                }
+            }
+
+            updateAI(dt, activeUnits, projectiles, effects) {
+                if (this.isDead) return;
+
+                // Find nearest enemy
+                let nearest = null;
+                let minDist = Infinity;
+
+                for (let other of activeUnits) {
+                    if (other && other.team !== this.team && !other.isDead) {
+                        let dx = other.x - this.x;
+                        let dy = other.y - this.y;
+                        let dist = Math.hypot(dx, dy);
+
+                        if (dist < minDist) {
+                            minDist = dist;
+                            nearest = other;
+                        }
+                    }
+                }
+
+                this.target = nearest;
+
+                if (!this.target || this.target.isDead) {
+                    if (this.type === 'knight') {
+                        this.vx *= 0.9;
+                        this.vy *= 0.9;
+                    }
+                    return;
+                }
+
+                let dx = this.target.x - this.x;
+                let dy = this.target.y - this.y;
+                let dist = Math.hypot(dx, dy);
+
+                // Face enemy (騎士の場合は移動方向を維持)
+                if (this.type !== 'knight') {
+                    this.angle = Math.atan2(dy, dx);
+                }
+
+                // Movement & Attack Logic
+                if (dist <= this.spec.range) {
+                    // In attack range
+                    if (this.attackCooldown <= 0) {
+                        this.performAttack(this.target, projectiles, effects);
+                    }
+                    // 騎士以外は攻撃範囲内で立ち止まるが、騎士はトップスピードで駆け抜け続ける
+                    if (this.type !== 'knight') {
+                        this.vx *= 0.5;
+                        this.vy *= 0.5;
+                    }
+                } else {
+                    // Chase enemy infinitely anywhere on the map
+                    let speed = this.spec.speed;
+                    this.vx = (dx / dist) * speed;
+                    this.vy = (dy / dist) * speed;
+                    this.walkCycle += dt * 10;
+                }
+
+                // 騎士（Knight）専用の縦横無尽・疾走AIモーション
+                if (this.type === 'knight' && !this.isDead) {
+                    let speed = this.spec.speed;
+                    this.walkCycle += dt * 22; // 馬の躍動的な上下ギャロップ
+
+                    // 騎馬戦術の状態管理（目標距離・位相に応じた本格的な一撃離脱・旋回再突撃）
+                    let targetAngle = Math.atan2(dy, dx);
+                    
+                    if (dist < 80) {
+                        // 敵との至近距離（すれ違いざまの切り付け）：直前で横に大きくスライド・通り抜ける
+                        let sideDir = (parseInt(this.id, 36) % 2 === 0) ? 1.4 : -1.4;
+                        targetAngle += sideDir;
+                    } else if (dist < 220) {
+                        // アプローチ・アーク（直進せず弓なりに回り込んで接近）
+                        let arcDir = (parseInt(this.id, 36) % 2 === 0) ? 0.75 : -0.75;
+                        targetAngle += arcDir * (dist / 220);
+                    }
+
+                    // 目標方向への慣性＋旋回補正（攻撃時も減速せずスピード500を100%維持）
+                    let targetVx = Math.cos(targetAngle) * speed;
+                    let targetVy = Math.sin(targetAngle) * speed;
+
+                    // 速度ベクトルの補正（攻撃スイング中もトップスピードのまま通過）
+                    this.vx += (targetVx - this.vx) * dt * 4.5;
+                    this.vy += (targetVy - this.vy) * dt * 4.5;
+
+                    // 進行方向（移動速度ベクトル）へ馬の向きを常にスムーズに回転追従
+                    let currentMoveSpeed = Math.hypot(this.vx, this.vy);
+                    if (currentMoveSpeed > 10) {
+                        let moveAngle = Math.atan2(this.vy, this.vx);
+                        // 角度のスムーズな補正
+                        let diff = moveAngle - this.angle;
+                        while (diff < -Math.PI) diff += Math.PI * 2;
+                        while (diff > Math.PI) diff -= Math.PI * 2;
+                        this.angle += diff * dt * 8;
+                    }
+                }
+            }
+
+            performAttack(target, projectiles, effects) {
+                if (this.isDead || !target || target.isDead) return;
+
+                this.attackCooldown = this.spec.atkInterval;
+                this.swingProgress = 1.0;
+
+                if (this.type === 'archer') {
+                    // Ranged Attack: Spawn Arrow
+                    projectiles.push(new Projectile(
+                        this.x, this.y, target, this.spec.atk, this.team, this.spec.arrowSpeed || 1000
+                    ));
+                } else if (this.type === 'giant') {
+                    // 巨人の範囲攻撃（中心からの距離に応じてダメージ＆ノックバックが減衰）
+                    let splashRadius = 110;
+                    effects.push(new ShockwaveEffect(target.x, target.y, splashRadius));
+
+                    if (window.game && window.game.units) {
+                        window.game.units.forEach(u => {
+                            if (u.team !== this.team && !u.isDead) {
+                                let d = Math.hypot(u.x - target.x, u.y - target.y);
+                                if (d <= splashRadius) {
+                                    // 爆心地からの距離に応じた減衰率（直撃 = 1.0、限界距離 = 0.25）
+                                    let distanceFactor = Math.max(0.25, 1.0 - (d / splashRadius) * 0.75);
+
+                                    // 距離に応じて減衰した攻撃力とノックバック力
+                                    let actualAtk = this.spec.atk * distanceFactor;
+                                    let kbPower = ((this.spec.atk * 18) / (u.spec.mass || 1.0)) * distanceFactor;
+
+                                    let angle = Math.atan2(u.y - this.y, u.x - this.x);
+                                    u.takeDamage(actualAtk, Math.cos(angle) * kbPower, Math.sin(angle) * kbPower, effects);
+                                }
+                            }
+                        });
+                    }
+                } else {
+                    // Melee Attack
+                    let impactDist = Math.hypot(target.x - this.x, target.y - this.y);
+                    if (impactDist <= this.spec.range + target.radius) {
+                        let angle = Math.atan2(target.y - this.y, target.x - this.x);
+                        let kbPower = (this.spec.atk * 15) / (target.spec.mass || 1.0);
+                        
+                        // 騎士の攻撃ノックバック大幅強化（強烈な遠心力・突撃衝撃波）
+                        if (this.type === 'knight') {
+                            kbPower = (this.spec.atk * 55) / (target.spec.mass || 1.0);
+                        }
+
+                        // ノックバック耐性（knockbackRes）の反映
+                        if (target.spec && target.spec.knockbackRes) {
+                            kbPower *= (1 - Math.min(0.95, target.spec.knockbackRes));
+                        }
+
+                        // 槍兵（Spear）の突き攻撃時：自然な強さで後ろに押し出す物理ノックバック
+                        if (this.type === 'spear') {
+                            let spearPush = (140 / (target.spec.mass || 1.0)) * (1 - (target.spec.knockbackRes || 0));
+                            target.vx += Math.cos(angle) * spearPush;
+                            target.vy += Math.sin(angle) * spearPush;
+                            target.z = Math.max(target.z, 2);
+                            target.vz = Math.max(target.vz, 25 * (1 - (target.spec.knockbackRes || 0)));
+                            kbPower = 0;
+                        }
+
+                        if (target.type === 'shield' && Math.cos(target.angle - this.angle) < -0.5) {
+                            kbPower *= (1 - target.spec.knockbackRes);
+                        }
+
+                        target.takeDamage(this.spec.atk, Math.cos(angle) * kbPower, Math.sin(angle) * kbPower, effects);
+
+                        // Shield Bash Effect
+                        if (this.type === 'shield') {
+                            effects.push(new ShockwaveEffect(this.x, this.y, 30));
+                        }
+                    }
+                }
+            }
+
+            takeDamage(amount, kx, ky, effects) {
+                if (this.isDead) return;
+
+                this.hp -= amount;
+                
+                // 騎士は生存時被ダメージ時も勢いを落とさずノックバック速度減速を受けない
+                if (this.type !== 'knight') {
+                    this.vx += kx;
+                    this.vy += ky;
+                }
+
+                if (Math.hypot(kx, ky) > 100 && this.type !== 'knight') {
+                    this.z = 10;
+                    this.vz = 200;
+                    this.angularVelocity = (Math.random() - 0.5) * 12;
+                    this.isFallen = true;
+                }
+
+                // Floating Damage Text Effect
+                effects.push(new DamageTextEffect(this.x, this.y - 20, Math.round(amount)));
+
+                if (this.hp <= 0) {
+                    this.hp = 0;
+                    this.isDead = true;
+                    this.vx = 0;
+                    this.vy = 0;
+                    this.angularVelocity = (Math.random() - 0.5) * 15;
+                }
+            }
+
+            draw(ctx) {
+                ctx.save();
+                ctx.translate(this.x, this.y - this.z);
+                ctx.rotate(this.angle + this.rotation);
+
+                let bodyColor = this.team === 'red' ? '#e53935' : '#1e88e5';
+                let scale = this.type === 'giant' ? 1.8 : 1.0;
+                ctx.scale(scale, scale);
+
+                // Walking Bobbing
+                let legOffset = Math.sin(this.walkCycle) * 4;
+
+                // Shadow
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
+                ctx.beginPath();
+                ctx.ellipse(0, this.z, this.radius * (this.type === 'knight' ? 1.4 : 1.0), this.radius * 0.6, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                // 騎士（馬に乗った状態）の馬の描画
+                if (this.type === 'knight') {
+                    // 馬の躍動的なギャロップ（上下上下の疾走感）
+                    let gallopY = Math.sin(this.walkCycle) * 3;
+                    let gallopLeg = Math.sin(this.walkCycle) * 8;
+                    ctx.translate(0, gallopY);
+
+                    // 馬の足（走りモーション）
+                    ctx.fillStyle = '#4e342e';
+                    ctx.beginPath();
+                    ctx.arc(-12 + gallopLeg, 12, 3.5, 0, Math.PI * 2);
+                    ctx.arc(8 - gallopLeg, 12, 3.5, 0, Math.PI * 2);
+                    ctx.arc(-12 - gallopLeg, -12, 3.5, 0, Math.PI * 2);
+                    ctx.arc(8 + gallopLeg, -12, 3.5, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // 馬の胴体（互換性確保のため roundRect / rect フォールバック）
+                    ctx.fillStyle = '#6d4c41';
+                    ctx.beginPath();
+                    if (ctx.roundRect) {
+                        ctx.roundRect(-16, -10, 32, 20, 8);
+                    } else {
+                        ctx.rect(-16, -10, 32, 20);
+                    }
+                    ctx.fill();
+
+                    // 馬の頭部
+                    ctx.beginPath();
+                    ctx.ellipse(15, -2, 7, 5, 0, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // 馬のたてがみ
+                    ctx.fillStyle = '#3e2723';
+                    ctx.fillRect(8, -8, 6, 4);
+                } else {
+                    // Feet (通常歩兵)
+                    ctx.fillStyle = '#212121';
+                    ctx.beginPath();
+                    ctx.arc(-4 + legOffset, 8, 4, 0, Math.PI * 2);
+                    ctx.arc(-4 - legOffset, -8, 4, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                // Fall Guys Style Jellybean Body (互換性確保)
+                ctx.fillStyle = bodyColor;
+                ctx.beginPath();
+                if (ctx.roundRect) {
+                    ctx.roundRect(-this.radius, -this.radius, this.radius * 2, this.radius * 2, 10);
+                } else {
+                    ctx.rect(-this.radius, -this.radius, this.radius * 2, this.radius * 2);
+                }
+                ctx.fill();
+
+                // Faceplate
+                ctx.fillStyle = '#ffffff';
+                ctx.beginPath();
+                ctx.ellipse(3, 0, this.radius * 0.5, this.radius * 0.7, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Eyes
+                ctx.fillStyle = '#000000';
+                ctx.beginPath();
+                ctx.arc(4, -3, 2, 0, Math.PI * 2);
+                ctx.arc(4, 3, 2, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Weapon / Shield Rendering
+                ctx.save();
+                let swingAngle = Math.sin(this.swingProgress * Math.PI) * 1.2;
+                
+                if (this.type === 'shield') {
+                    // Shield Bash Animation (forward thrust)
+                    let bashOffset = Math.sin(this.swingProgress * Math.PI) * 8;
+                    ctx.translate(bashOffset, 0);
+                    ctx.fillStyle = '#78909c';
+                    ctx.fillRect(10, -12, 6, 24);
+                    ctx.strokeStyle = '#37474f';
+                    ctx.strokeRect(10, -12, 6, 24);
+                } else if (this.type === 'spear') {
+                    // 槍兵の突き（Thrust）アニメーション：前方にまっすぐ突き出す
+                    let thrustOffset = Math.sin(this.swingProgress * Math.PI) * 22;
+                    ctx.translate(thrustOffset, 0);
+                    ctx.fillStyle = this.spec.color;
+                    ctx.fillRect(6, -2, 36, 4); // 槍の柄
+                    // 槍の先端（穂先）
+                    ctx.fillStyle = '#cfd8dc';
+                    ctx.beginPath();
+                    ctx.moveTo(42, -5);
+                    ctx.lineTo(50, 0);
+                    ctx.lineTo(42, 5);
+                    ctx.fill();
+                } else if (this.type === 'knight') {
+                    // 騎士の長剣スイング
+                    ctx.rotate(swingAngle);
+                    ctx.fillStyle = '#b0bec5';
+                    ctx.fillRect(6, -3, 26, 6); // 銀色の剣身
+                    ctx.fillStyle = '#ffd54f';
+                    ctx.fillRect(4, -6, 4, 12); // 金色の鍔
+                } else if (this.type === 'archer') {
+                    ctx.rotate(swingAngle);
+                    // Bow
+                    ctx.strokeStyle = '#5d4037';
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.arc(10, 0, 14, -Math.PI / 3, Math.PI / 3);
+                    ctx.stroke();
+
+                    // String
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.moveTo(10 + Math.cos(-Math.PI / 3) * 14, Math.sin(-Math.PI / 3) * 14);
+                    ctx.lineTo(10 - this.swingProgress * 6, 0);
+                    ctx.lineTo(10 + Math.cos(Math.PI / 3) * 14, Math.sin(Math.PI / 3) * 14);
+                    ctx.stroke();
+                } else {
+                    ctx.rotate(swingAngle);
+                    // Weapon (Club / Sword / Giant)
+                    ctx.fillStyle = this.spec.color;
+                    let wLen = this.type === 'giant' ? 30 : 18;
+                    ctx.fillRect(6, -3, wLen, 6);
+                }
+                ctx.restore();
+
+                ctx.restore();
+
+                // Health Bar
+                if (!this.isDead && this.hp < this.spec.hp) {
+                    let barW = 24;
+                    let barH = 4;
+                    let pct = Math.max(0, this.hp / this.spec.hp);
+
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+                    ctx.fillRect(this.x - barW / 2, this.y - this.radius - 12, barW, barH);
+                    ctx.fillStyle = this.team === 'red' ? '#ef5350' : '#42a5f5';
+                    ctx.fillRect(this.x - barW / 2, this.y - this.radius - 12, barW * pct, barH);
+                }
+            }
+        }
+
+        // --- 3. PROJECTILE CLASS ---
+        class Projectile {
+            constructor(x, y, target, damage, team, speed) {
+                this.x = x;
+                this.y = y;
+                this.target = target;
+                this.damage = damage;
+                this.team = team;
+                this.speed = speed;
+                this.isDead = false;
+
+                let dx = target.x - x;
+                let dy = target.y - y;
+                let dist = Math.hypot(dx, dy);
+                this.vx = (dx / dist) * speed;
+                this.vy = (dy / dist) * speed;
+                this.angle = Math.atan2(dy, dx);
+            }
+
+            update(dt, units, effects) {
+                if (this.isDead) return;
+
+                this.x += this.vx * dt;
+                this.y += this.vy * dt;
+
+                // Collision check
+                for (let unit of units) {
+                    if (unit.team !== this.team && !unit.isDead) {
+                        let dist = Math.hypot(unit.x - this.x, unit.y - this.y);
+                        if (dist < unit.radius + 6) {
+                            // 矢の命中時に敵をノックバックさせない（kx = 0, ky = 0）
+                            unit.takeDamage(this.damage, 0, 0, effects);
+                            this.isDead = true;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            draw(ctx) {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.angle);
+
+                ctx.fillStyle = '#d7ccc8';
+                ctx.fillRect(-8, -1.5, 16, 3);
+                ctx.fillStyle = '#424242';
+                ctx.beginPath();
+                ctx.moveTo(8, -3);
+                ctx.lineTo(13, 0);
+                ctx.lineTo(8, 3);
+                ctx.fill();
+
+                ctx.restore();
+            }
+        }
+
+        // --- 4. VISUAL EFFECT CLASSES ---
+        class DamageTextEffect {
+            constructor(x, y, text) {
+                this.x = x;
+                this.y = y;
+                this.text = text;
+                this.life = 0.8;
+                this.vy = -30;
+            }
+            update(dt) {
+                this.life -= dt;
+                this.y += this.vy * dt;
+            }
+            draw(ctx) {
+                ctx.save();
+                ctx.font = 'bold 12px sans-serif';
+                ctx.fillStyle = `rgba(255, 235, 59, ${Math.max(0, this.life / 0.8)})`;
+                ctx.fillText(this.text, this.x - 6, this.y);
+                ctx.restore();
+            }
+        }
+
+        class ShockwaveEffect {
+            constructor(x, y, maxRadius) {
+                this.x = x;
+                this.y = y;
+                this.radius = 5;
+                this.maxRadius = maxRadius;
+                this.life = 0.4;
+            }
+            update(dt) {
+                this.life -= dt;
+                this.radius += (this.maxRadius / 0.4) * dt;
+            }
+            draw(ctx) {
+                ctx.save();
+                ctx.strokeStyle = `rgba(255, 255, 255, ${Math.max(0, this.life / 0.4)})`;
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.restore();
+            }
+        }
+
+        // --- 5. MAIN GAME SYSTEM ---
+        class Game {
+            constructor() {
+                this.canvas = document.getElementById('gameCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.state = 'menu'; // 'menu', 'placement', 'battle', 'result'
+                this.mode = 'sandbox'; // 'sandbox', 'stage'
+                this.interactionMode = 'camera'; // 'camera', 'place', or 'delete'
+
+                this.unitsData = JSON.parse(localStorage.getItem('tabs_units')) || DEFAULT_UNITS;
+                this.units = [];
+                this.initialUnitsData = []; // 戦闘開始時の初期配置スナップショット
+                this.projectiles = [];
+                this.effects = [];
+
+                this.currentStageIdx = 0;
+                this.selectedUnitType = 'club';
+                this.selectedTeam = 'red';
+                this.simSpeed = 0.7;
+                this.isPaused = false;
+
+                this.redBudget = Infinity;
+                this.blueBudget = Infinity;
+
+                this.camera = { x: 0, y: 0, zoom: 1.0 };
+                this.dragState = { isDragging: false, startX: 0, startY: 0 };
+                
+                // 範囲選択削除用の状態管理
+                this.selectBox = { active: false, startX: 0, startY: 0, currentX: 0, currentY: 0 };
+
+                this.initResize();
+                this.initUI();
+                this.initPalette();
+                this.initEvents();
+
+                this.lastTime = performance.now();
+                requestAnimationFrame((t) => this.loop(t));
+            }
+
+            initResize() {
+                const resize = () => {
+                    this.canvas.width = window.innerWidth;
+                    this.canvas.height = window.innerHeight;
+                };
+                window.addEventListener('resize', resize);
+                resize();
+            }
+
+            initUI() {
+                // Menu Buttons
+                document.getElementById('btnStartSandbox').onclick = () => this.startSandboxMode();
+                document.getElementById('btnStartStage').onclick = () => {
+                    document.getElementById('menuModal').classList.add('hidden');
+                    document.getElementById('stageModal').classList.remove('hidden');
+                    this.renderStageGrid();
+                };
+                document.getElementById('btnCloseStage').onclick = () => {
+                    document.getElementById('stageModal').classList.add('hidden');
+                    document.getElementById('menuModal').classList.remove('hidden');
+                };
+
+                // Mode Toggle Button (3-way: camera -> place -> delete)
+                document.getElementById('btnToggleMode').onclick = () => {
+                    let btn = document.getElementById('btnToggleMode');
+                    if (this.interactionMode === 'camera') {
+                        this.interactionMode = 'place';
+                        btn.innerHTML = '<i class="fa-solid fa-user-plus text-green-400"></i> 兵士配置';
+                        btn.classList.add('border-green-500');
+                        btn.classList.remove('border-red-500');
+                    } else if (this.interactionMode === 'place') {
+                        this.interactionMode = 'delete';
+                        btn.innerHTML = '<i class="fa-solid fa-trash text-red-400"></i> 範囲削除';
+                        btn.classList.remove('border-green-500');
+                        btn.classList.add('border-red-500');
+                    } else {
+                        this.interactionMode = 'camera';
+                        btn.innerHTML = '<i class="fa-solid fa-hand text-yellow-300"></i> カメラ移動';
+                        btn.classList.remove('border-green-500', 'border-red-500');
+                    }
+                };
+
+                // Battle UI
+                document.getElementById('btnStartBattle').onclick = () => this.startBattle();
+                document.getElementById('btnClear').onclick = () => this.clearUnits();
+                document.getElementById('btnBackToMenu').onclick = () => this.returnToMenu();
+                document.getElementById('btnPause').onclick = () => {
+                    this.isPaused = !this.isPaused;
+                    document.getElementById('btnPause').innerHTML = this.isPaused ?
+                        '<i class="fa-solid fa-play"></i> 再開' : '<i class="fa-solid fa-pause"></i> 一時停止';
+                };
+                document.getElementById('btnSpeed').onclick = () => {
+                    this.simSpeed = this.simSpeed === 0.7 ? 1.4 : (this.simSpeed === 1.4 ? 0.35 : 0.7);
+                    document.getElementById('btnSpeed').innerText = `速度: ${this.simSpeed / 0.7}x`;
+                };
+
+                // Result Buttons
+                document.getElementById('btnRetry').onclick = () => this.resetPlacement();
+                document.getElementById('btnNextStage').onclick = () => {
+                    if (this.currentStageIdx < STAGES.length - 1) {
+                        this.startStageMode(this.currentStageIdx + 1);
+                    }
+                };
+                document.getElementById('btnResultMenu').onclick = () => this.returnToMenu();
+
+                // Settings & Password Unlock (Password: 82016202)
+                document.getElementById('btnSettings').onclick = () => {
+                    document.getElementById('settingsModal').classList.remove('hidden');
+                };
+                document.getElementById('btnCloseSettings').onclick = () => {
+                    document.getElementById('settingsModal').classList.add('hidden');
+                };
+                document.getElementById('btnUnlockSettings').onclick = () => {
+                    let pass = document.getElementById('passInput').value;
+                    if (pass === '82016202') {
+                        document.getElementById('passwordSection').classList.add('hidden');
+                        document.getElementById('editorSection').classList.remove('hidden');
+                        this.renderSettingsEditor();
+                    } else {
+                        document.getElementById('passError').classList.remove('hidden');
+                    }
+                };
+
+                // Team Switcher
+                document.getElementById('btnSelectRed').onclick = () => {
+                    this.selectedTeam = 'red';
+                    document.getElementById('btnSelectRed').className = "btn-bounce px-4 py-1 rounded-lg text-xs font-bold bg-red-600 text-white shadow-lg";
+                    document.getElementById('btnSelectBlue').className = "btn-bounce px-4 py-1 rounded-lg text-xs font-bold bg-gray-700 text-gray-300 hover:bg-gray-600";
+                };
+                document.getElementById('btnSelectBlue').onclick = () => {
+                    this.selectedTeam = 'blue';
+                    document.getElementById('btnSelectBlue').className = "btn-bounce px-4 py-1 rounded-lg text-xs font-bold bg-blue-600 text-white shadow-lg";
+                    document.getElementById('btnSelectRed').className = "btn-bounce px-4 py-1 rounded-lg text-xs font-bold bg-gray-700 text-gray-300 hover:bg-gray-600";
+                };
+            }
+
+            initPalette() {
+                let palette = document.getElementById('unitPalette');
+                palette.innerHTML = '';
+
+                Object.values(this.unitsData).forEach(u => {
+                    let btn = document.createElement('button');
+                    btn.className = `btn-bounce flex flex-col items-center p-2 rounded-xl border border-white/10 min-w-[64px] ${this.selectedUnitType === u.id ? 'bg-white/20 border-yellow-400' : 'bg-black/40'}`;
+                    btn.innerHTML = `<span class="text-xs font-bold">${u.name}</span><span class="text-[10px] text-yellow-300">${u.cost}G</span>`;
+                    btn.onclick = () => {
+                        this.selectedUnitType = u.id;
+                        this.initPalette();
+                    };
+                    palette.appendChild(btn);
+                });
+            }
+
+            startSandboxMode() {
+                this.mode = 'sandbox';
+                this.state = 'placement';
+                this.redBudget = Infinity;
+                this.blueBudget = Infinity;
+                this.clearUnits();
+
+                document.getElementById('menuModal').classList.add('hidden');
+                document.getElementById('stageInfo').classList.add('hidden');
+                document.getElementById('teamSwitchContainer').classList.remove('hidden');
+                document.getElementById('placementBar').classList.remove('hidden');
+                this.updateBudgetDisplay();
+            }
+
+            startStageMode(stageIdx) {
+                if (stageIdx < 0 || stageIdx >= STAGES.length) return;
+                this.mode = 'stage';
+                this.state = 'placement';
+                this.currentStageIdx = stageIdx;
+                let stage = STAGES[stageIdx];
+
+                this.redBudget = stage.budget;
+                this.blueBudget = Infinity;
+                
+                // 配列のみクリア（clearUnitsの再帰呼出を回避）
+                this.units = [];
+                this.projectiles = [];
+                this.effects = [];
+
+                // Spawn Enemies
+                stage.enemies.forEach(e => {
+                    let spec = this.unitsData[e.type];
+                    this.units.push(new Unit(e.type, 'blue', e.x, e.y, spec));
+                });
+
+                document.getElementById('stageModal').classList.add('hidden');
+                document.getElementById('menuModal').classList.add('hidden');
+                document.getElementById('stageInfo').classList.remove('hidden');
+                document.getElementById('stageInfo').innerText = stage.name;
+                document.getElementById('teamSwitchContainer').classList.add('hidden');
+                document.getElementById('placementBar').classList.remove('hidden');
+                document.getElementById('resultModal').classList.add('hidden');
+                this.selectedTeam = 'red';
+                this.updateBudgetDisplay();
+            }
+
+            renderStageGrid() {
+                let grid = document.getElementById('stageGrid');
+                grid.innerHTML = '';
+                STAGES.forEach((st, idx) => {
+                    let btn = document.createElement('button');
+                    btn.className = "btn-bounce glass-panel p-3 rounded-xl flex flex-col items-center justify-center text-center hover:bg-white/20";
+                    btn.innerHTML = `<span class="font-bold text-sm">${st.name}</span><span class="text-xs text-yellow-300">${st.budget}G</span>`;
+                    btn.onclick = () => this.startStageMode(idx);
+                    grid.appendChild(btn);
+                });
+            }
+
+            updateBudgetDisplay() {
+                let redText = document.getElementById('redBudgetText');
+                let blueText = document.getElementById('blueBudgetText');
+                redText.innerText = `赤軍: ${this.redBudget === Infinity ? '∞' : this.redBudget + 'G'}`;
+                blueText.innerText = `青軍: ${this.blueBudget === Infinity ? '∞' : this.blueBudget + 'G'}`;
+            }
+
+            initEvents() {
+                // Drag & Tap Placement & Box Select Delete
+                this.canvas.addEventListener('pointerdown', (e) => {
+                    if (e.target !== this.canvas) return;
+
+                    let screenX = e.clientX;
+                    let screenY = e.clientY;
+
+                    // 範囲削除モード時：ドラッグで選択枠を開始
+                    if (this.state === 'placement' && this.interactionMode === 'delete' && screenY < window.innerHeight - 110) {
+                        this.selectBox.active = true;
+                        this.selectBox.startX = screenX;
+                        this.selectBox.startY = screenY;
+                        this.selectBox.currentX = screenX;
+                        this.selectBox.currentY = screenY;
+                        return;
+                    }
+
+                    // カメラ移動モードまたは配置モードの画面ドラッグ
+                    this.dragState.isDragging = true;
+                    this.dragState.startX = screenX;
+                    this.dragState.startY = screenY;
+                });
+
+                this.canvas.addEventListener('pointermove', (e) => {
+                    if (this.selectBox.active) {
+                        this.selectBox.currentX = e.clientX;
+                        this.selectBox.currentY = e.clientY;
+                        this.dragState.isDragging = false;
+                        return;
+                    }
+
+                    if (this.dragState.isDragging) {
+                        let dx = e.clientX - this.dragState.startX;
+                        let dy = e.clientY - this.dragState.startY;
+                        this.camera.x += dx;
+                        this.camera.y += dy;
+                        this.dragState.startX = e.clientX;
+                        this.dragState.startY = e.clientY;
+                    }
+                });
+
+                const endSelectionOrDrag = (e) => {
+                    if (this.selectBox.active) {
+                        let dx = Math.abs(this.selectBox.currentX - this.selectBox.startX);
+                        let dy = Math.abs(this.selectBox.currentY - this.selectBox.startY);
+
+                        // 削除モード時：ドラッグして囲んだ領域内のユニットを一括削除
+                        if (dx > 5 || dy > 5) {
+                            this.removeUnitsInBox(
+                                this.selectBox.startX,
+                                this.selectBox.startY,
+                                this.selectBox.currentX,
+                                this.selectBox.currentY
+                            );
+                        }
+                        this.selectBox.active = false;
+                    } else if (this.state === 'placement' && this.interactionMode === 'place' && e.clientY < window.innerHeight - 110) {
+                        // 配置モード時のみ：タップ/クリックで兵士を配置
+                        this.tryPlaceUnit(e.clientX, e.clientY);
+                    }
+                    this.dragState.isDragging = false;
+                };
+
+                this.canvas.addEventListener('pointerup', endSelectionOrDrag);
+                this.canvas.addEventListener('pointercancel', endSelectionOrDrag);
+
+                // 右クリックメニューをキャンバス上で無効化
+                this.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+
+                // Mouse Wheel Zoom
+                window.addEventListener('wheel', (e) => {
+                    let zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
+                    this.camera.zoom = Math.max(0.3, Math.min(3.0, this.camera.zoom * zoomFactor));
+                }, { passive: true });
+            }
+
+            removeUnitsInBox(screenX1, screenY1, screenX2, screenY2) {
+                // スクリーン座標範囲をワールド座標へ変換
+                let left = Math.min(screenX1, screenX2);
+                let right = Math.max(screenX1, screenX2);
+                let top = Math.min(screenY1, screenY2);
+                let bottom = Math.max(screenY1, screenY2);
+
+                let wLeft = (left - window.innerWidth / 2 - this.camera.x) / this.camera.zoom;
+                let wRight = (right - window.innerWidth / 2 - this.camera.x) / this.camera.zoom;
+                let wTop = (top - window.innerHeight / 2 - this.camera.y) / this.camera.zoom;
+                let wBottom = (bottom - window.innerHeight / 2 - this.camera.y) / this.camera.zoom;
+
+                let remainingUnits = [];
+                this.units.forEach(u => {
+                    // 自陣の配置エリアかつ選択ボックス内にあるユニットを特定して返金・削除
+                    if (u.x >= wLeft && u.x <= wRight && u.y >= wTop && u.y <= wBottom) {
+                        // ステージモードでもサンドボックスでも配置した味方（または選択可能陣営）を返金・消去
+                        if (this.mode === 'sandbox' || u.team === 'red') {
+                            if (u.team === 'red' && this.redBudget !== Infinity) this.redBudget += u.spec.cost;
+                            if (u.team === 'blue' && this.blueBudget !== Infinity) this.blueBudget += u.spec.cost;
+                            return; // 削除対象（残り配列に入れない）
+                        }
+                    }
+                    remainingUnits.push(u);
+                });
+
+                this.units = remainingUnits;
+                this.updateBudgetDisplay();
+            }
+
+            tryPlaceUnit(screenX, screenY) {
+                // Convert Screen to World Coords
+                let wx = (screenX - window.innerWidth / 2 - this.camera.x) / this.camera.zoom;
+                let wy = (screenY - window.innerHeight / 2 - this.camera.y) / this.camera.zoom;
+
+                // Territory boundary check (Red placement on Left [wx <= 0], Blue placement on Right [wx > 0])
+                if (this.selectedTeam === 'red' && wx > 0) return;
+                if (this.selectedTeam === 'blue' && wx <= 0) return;
+
+                let spec = this.unitsData[this.selectedUnitType];
+
+                // Budget check
+                let budget = this.selectedTeam === 'red' ? this.redBudget : this.blueBudget;
+                if (budget < spec.cost) return;
+
+                if (this.selectedTeam === 'red' && this.redBudget !== Infinity) this.redBudget -= spec.cost;
+                if (this.selectedTeam === 'blue' && this.blueBudget !== Infinity) this.blueBudget -= spec.cost;
+
+                this.units.push(new Unit(this.selectedUnitType, this.selectedTeam, wx, wy, spec));
+                this.updateBudgetDisplay();
+            }
+
+            clearUnits() {
+                this.units = [];
+                this.projectiles = [];
+                this.effects = [];
+                if (this.mode === 'stage') {
+                    // ステージモードで「全削除」時は敵の再配置のみ実行
+                    let stage = STAGES[this.currentStageIdx];
+                    this.redBudget = stage.budget;
+                    stage.enemies.forEach(e => {
+                        let spec = this.unitsData[e.type];
+                        this.units.push(new Unit(e.type, 'blue', e.x, e.y, spec));
+                    });
+                } else {
+                    this.redBudget = Infinity;
+                    this.blueBudget = Infinity;
+                }
+                this.updateBudgetDisplay();
+            }
+
+            startBattle() {
+                if (this.units.length === 0) return;
+
+                // 戦闘開始直前の配置（初期位置・向き・タイプ）を完全保存
+                this.initialUnitsData = this.units.map(u => ({
+                    type: u.type,
+                    team: u.team,
+                    x: u.x,
+                    y: u.y,
+                    spec: { ...u.spec }
+                }));
+
+                this.state = 'battle';
+                document.getElementById('placementBar').classList.add('hidden');
+                document.getElementById('battleUI').classList.remove('hidden');
+            }
+
+            checkVictory() {
+                let redAlive = this.units.some(u => u.team === 'red' && !u.isDead);
+                let blueAlive = this.units.some(u => u.team === 'blue' && !u.isDead);
+
+                if (!redAlive || !blueAlive) {
+                    this.state = 'result';
+                    let modal = document.getElementById('resultModal');
+                    let winnerText = document.getElementById('winnerText');
+                    let btnNext = document.getElementById('btnNextStage');
+
+                    modal.classList.remove('hidden');
+                    if (redAlive) {
+                        winnerText.innerText = "赤軍の勝利！";
+                        winnerText.className = "text-3xl font-black text-red-500 mb-2";
+                        if (this.mode === 'stage' && this.currentStageIdx < STAGES.length - 1) {
+                            btnNext.classList.remove('hidden');
+                        } else {
+                            btnNext.classList.add('hidden');
+                        }
+                    } else if (blueAlive) {
+                        winnerText.innerText = "青軍の勝利！";
+                        winnerText.className = "text-3xl font-black text-blue-500 mb-2";
+                        btnNext.classList.add('hidden');
+                    } else {
+                        winnerText.innerText = "引き分け！";
+                        winnerText.className = "text-3xl font-black text-yellow-400 mb-2";
+                        btnNext.classList.add('hidden');
+                    }
+                }
+            }
+
+            resetPlacement() {
+                document.getElementById('resultModal').classList.add('hidden');
+                document.getElementById('battleUI').classList.add('hidden');
+                
+                // 戦闘開始前の初期配置データを復元
+                this.units = this.initialUnitsData.map(d => new Unit(d.type, d.team, d.x, d.y, d.spec));
+                this.projectiles = [];
+                this.effects = [];
+
+                if (this.mode === 'stage') {
+                    this.state = 'placement';
+                    document.getElementById('placementBar').classList.remove('hidden');
+                } else {
+                    this.state = 'placement';
+                    document.getElementById('placementBar').classList.remove('hidden');
+                }
+            }
+
+            returnToMenu() {
+                this.state = 'menu';
+                document.getElementById('resultModal').classList.add('hidden');
+                document.getElementById('battleUI').classList.add('hidden');
+                document.getElementById('placementBar').classList.add('hidden');
+                document.getElementById('menuModal').classList.remove('hidden');
+            }
+
+            renderSettingsEditor() {
+                let list = document.getElementById('unitEditorList');
+                list.innerHTML = '';
+
+                Object.values(this.unitsData).forEach(u => {
+                    let card = document.createElement('div');
+                    card.className = "bg-gray-800/80 p-3 rounded-2xl flex flex-col gap-2 border border-gray-700";
+                    card.innerHTML = `
+                        <div class="font-bold text-yellow-400 text-sm">${u.name}</div>
+                        <div class="grid grid-cols-2 gap-2 text-xs">
+                            <label>HP: <input type="number" data-id="${u.id}" data-prop="hp" value="${u.hp}" class="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1"></label>
+                            <label>攻撃力: <input type="number" data-id="${u.id}" data-prop="atk" value="${u.atk}" class="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1"></label>
+                            <label>攻撃間隔(秒): <input type="number" step="0.1" data-id="${u.id}" data-prop="atkInterval" value="${u.atkInterval}" class="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1"></label>
+                            <label>移動速度: <input type="number" data-id="${u.id}" data-prop="speed" value="${u.speed}" class="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1"></label>
+                            <label>攻撃射程: <input type="number" data-id="${u.id}" data-prop="range" value="${u.range}" class="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1"></label>
+                            <label>KB耐性(0-1): <input type="number" step="0.05" data-id="${u.id}" data-prop="knockbackRes" value="${u.knockbackRes || 0}" class="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1"></label>
+                            ${u.id === 'archer' ? `<label>矢の速度: <input type="number" data-id="${u.id}" data-prop="arrowSpeed" value="${u.arrowSpeed || 220}" class="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1"></label>` : ''}
+                        </div>
+                    `;
+                    list.appendChild(card);
+                });
+
+                // Attach Save Button Event
+                document.getElementById('btnSaveSettings').onclick = () => {
+                    list.querySelectorAll('input').forEach(inp => {
+                        let id = inp.dataset.id;
+                        let prop = inp.dataset.prop;
+                        let val = parseFloat(inp.value);
+                        if (!isNaN(val)) {
+                            this.unitsData[id][prop] = val;
+                        }
+                    });
+
+                    // 1. Save to LocalStorage
+                    localStorage.setItem('tabs_units', JSON.stringify(this.unitsData));
+
+                    // 2. Re-initialize Palette
+                    this.initPalette();
+
+                    // 3. Immediately apply to existing units placed on field
+                    this.units.forEach(u => {
+                        if (this.unitsData[u.type]) {
+                            let newSpec = this.unitsData[u.type];
+                            u.spec = { ...newSpec };
+                            u.hp = Math.min(u.hp, newSpec.hp);
+                        }
+                    });
+
+                    // Show success feedback message
+                    let msg = document.getElementById('saveSuccessText');
+                    msg.classList.remove('hidden');
+                    setTimeout(() => msg.classList.add('hidden'), 2000);
+                };
+            }
+
+            loop(time) {
+                let dt = (time - this.lastTime) / 1000;
+                this.lastTime = time;
+
+                // Limit dt to avoid huge step jumps
+                dt = Math.min(dt, 0.1);
+
+                if (!this.isPaused) {
+                    let simDt = dt * this.simSpeed;
+
+                    // Update Entities
+                    this.units.forEach(u => u.update(simDt, this.units, this.projectiles, this.effects));
+                    
+                    // 兵士同士の重なり（かさばり）防止衝突解決
+                    if (this.state === 'battle') {
+                        this.units.forEach(u => u.resolveUnitCollisions(simDt, this.units));
+                    }
+
+                    this.projectiles.forEach(p => p.update(simDt, this.units, this.effects));
+                    this.effects.forEach(e => e.update(simDt));
+
+                    // Cleanup Dead Projectiles & Effects
+                    this.projectiles = this.projectiles.filter(p => !p.isDead);
+                    this.effects = this.effects.filter(e => e.life > 0);
+
+                    // Check Victory
+                    if (this.state === 'battle') {
+                        this.checkVictory();
+                    }
+                }
+
+                // Render Scene
+                this.render();
+
+                requestAnimationFrame((t) => this.loop(t));
+            }
+
+            render() {
+                // Clear Canvas
+                this.ctx.fillStyle = '#4CAF50';
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+                this.ctx.save();
+                // Apply Camera Transform (Pan & Zoom)
+                this.ctx.translate(this.canvas.width / 2 + this.camera.x, this.canvas.height / 2 + this.camera.y);
+                this.ctx.scale(this.camera.zoom, this.camera.zoom);
+
+                // Grid Pattern Background
+                this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+                this.ctx.lineWidth = 2;
+                let gridSize = 100;
+                for (let x = -2000; x <= 2000; x += gridSize) {
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(x, -2000);
+                    this.ctx.lineTo(x, 2000);
+                    this.ctx.stroke();
+                }
+                for (let y = -2000; y <= 2000; y += gridSize) {
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(-2000, y);
+                    this.ctx.lineTo(2000, y);
+                    this.ctx.stroke();
+                }
+
+                // Center Dividing Line
+                this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
+                this.ctx.lineWidth = 4;
+                this.ctx.beginPath();
+                this.ctx.moveTo(0, -2000);
+                this.ctx.lineTo(0, 2000);
+                this.ctx.stroke();
+
+                // Sort units by Y position for proper depth rendering
+                let sortedUnits = [...this.units].sort((a, b) => a.y - b.y);
+
+                // Draw Entities
+                sortedUnits.forEach(u => u.draw(this.ctx));
+                this.projectiles.forEach(p => p.draw(this.ctx));
+                this.effects.forEach(e => e.draw(this.ctx));
+
+                this.ctx.restore();
+
+                // 範囲選択削除ボックスの描画（スクリーン空間）
+                if (this.selectBox.active) {
+                    let bx = Math.min(this.selectBox.startX, this.selectBox.currentX);
+                    let by = Math.min(this.selectBox.startY, this.selectBox.currentY);
+                    let bw = Math.abs(this.selectBox.currentX - this.selectBox.startX);
+                    let bh = Math.abs(this.selectBox.currentY - this.selectBox.startY);
+
+                    if (bw > 5 || bh > 5) {
+                        this.ctx.save();
+                        this.ctx.fillStyle = 'rgba(239, 68, 68, 0.18)';
+                        this.ctx.strokeStyle = '#ef4444';
+                        this.ctx.lineWidth = 2;
+                        this.ctx.setLineDash([6, 4]);
+                        this.ctx.fillRect(bx, by, bw, bh);
+                        this.ctx.strokeRect(bx, by, bw, bh);
+                        this.ctx.restore();
+                    }
+                }
+            }
+        }
+
+        // --- 6. START GAME ON LOAD ---
+        window.onload = () => {
+            window.game = new Game();
+        };
+    </script>
+</body>
+</html>
