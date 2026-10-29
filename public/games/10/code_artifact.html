@@ -1,0 +1,1698 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>鹿児島ルアーフィッシング - Kagoshima Lure Master Extra</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700;900&display=swap');
+        
+        body {
+            font-family: 'M PLUS Rounded 1c', sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+            background-color: #090d16;
+            color: #f8fafc;
+            overflow-x: hidden;
+            overscroll-behavior-y: none;
+        }
+
+        /* Custom scrollbars */
+        ::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #0284c7;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body class="h-screen w-screen flex flex-col justify-between overflow-hidden">
+
+    <!-- TOP HEADER -->
+    <header class="bg-slate-900/95 border-b border-cyan-500/30 px-2 sm:px-4 py-2 flex flex-col sm:flex-row justify-between items-center z-20 backdrop-blur-md gap-2 shrink-0">
+        <div class="flex items-center justify-between w-full sm:w-auto">
+            <div class="flex items-center gap-2">
+                <i class="fa-solid font-black text-cyan-400 text-xl sm:text-2xl fa-fish-fins"></i>
+                <div>
+                    <h1 class="font-black text-sm sm:text-lg text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-emerald-400 to-amber-300 leading-none">鹿児島 LURE MASTER EX</h1>
+                    <p class="text-[10px] sm:text-[11px] text-slate-400" id="current-location-text">現在のポイント: 重富漁港 (姶良市)</p>
+                </div>
+            </div>
+
+            <!-- スマホ時のサブ情報 -->
+            <div class="flex items-center gap-1.5 sm:hidden">
+                <div class="bg-slate-800/80 px-2 py-0.5 rounded-lg border border-amber-500/40 flex items-center gap-1 text-xs">
+                    <i class="fa-solid fa-coins text-amber-400 text-[10px]"></i>
+                    <span class="font-black text-amber-300 text-xs" id="money-display-mobile">¥10,000</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-1.5 sm:gap-3 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
+            <!-- 天候 & 時間帯表示 -->
+            <div id="environment-display" class="bg-slate-800/80 px-2 sm:px-2.5 py-1 rounded-xl border border-sky-500/40 flex items-center gap-1.5 text-[11px] sm:text-xs text-sky-300 shrink-0">
+                <i id="weather-icon" class="fa-solid fa-sun text-amber-400"></i>
+                <span id="time-text">朝マズメ</span> | <span id="weather-text">晴れ</span>
+            </div>
+
+            <!-- 所持金 (PC用) -->
+            <div class="hidden sm:flex bg-slate-800/80 px-3 py-1 rounded-xl border border-amber-500/40 items-center gap-2">
+                <i class="fa-solid fa-coins text-amber-400 text-sm"></i>
+                <span class="font-black text-amber-300 text-xs sm:text-sm" id="money-display">¥10,000</span>
+            </div>
+
+            <!-- エサバケツ表示 -->
+            <button onclick="openBaitBucketModal()" class="bg-slate-800/80 px-2 sm:px-2.5 py-1 rounded-xl border border-emerald-500/40 hover:bg-slate-700/80 flex items-center gap-1.5 transition cursor-pointer shrink-0" title="生きエサを選択">
+                <i class="fa-solid fa-bucket text-emerald-400 text-xs"></i>
+                <span class="font-bold text-emerald-300 text-[11px] sm:text-xs" id="bait-bucket-display">エサ: 0匹</span>
+            </button>
+
+            <!-- ナビゲーションボタン -->
+            <nav class="flex gap-1 shrink-0">
+                <button onclick="switchView('game')" id="btn-view-game" class="px-2 sm:px-2.5 py-1 rounded-lg font-bold text-[11px] sm:text-xs bg-cyan-600 hover:bg-cyan-500 text-white transition flex items-center gap-1 shadow-lg shadow-cyan-900/50">
+                    <i class="fa-solid fa-water"></i> 釣り場
+                </button>
+                <button onclick="switchView('quests')" id="btn-view-quests" class="px-2 sm:px-2.5 py-1 rounded-lg font-bold text-[11px] sm:text-xs bg-slate-700 hover:bg-slate-600 text-white transition flex items-center gap-1">
+                    <i class="fa-solid fa-list-check"></i> 任務
+                </button>
+                <button onclick="switchView('aquarium')" id="btn-view-aquarium" class="px-2 sm:px-2.5 py-1 rounded-lg font-bold text-[11px] sm:text-xs bg-slate-700 hover:bg-slate-600 text-white transition flex items-center gap-1">
+                    <i class="fa-solid fa-fish-fins"></i> 水族館
+                </button>
+                <button onclick="switchView('map')" id="btn-view-map" class="px-2 sm:px-2.5 py-1 rounded-lg font-bold text-[11px] sm:text-xs bg-slate-700 hover:bg-slate-600 text-white transition flex items-center gap-1">
+                    <i class="fa-solid fa-map-location-dot"></i> マップ
+                </button>
+                <button onclick="switchView('shop')" id="btn-view-shop" class="px-2 sm:px-2.5 py-1 rounded-lg font-bold text-[11px] sm:text-xs bg-slate-700 hover:bg-slate-600 text-white transition flex items-center gap-1">
+                    <i class="fa-solid fa-store"></i> 釣具店
+                </button>
+                <button onclick="switchView('tackle')" id="btn-view-tackle" class="px-2 sm:px-2.5 py-1 rounded-lg font-bold text-[11px] sm:text-xs bg-slate-700 hover:bg-slate-600 text-white transition flex items-center gap-1">
+                    <i class="fa-solid fa-toolbox"></i> 装備
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <!-- MAIN CONTENT AREA -->
+    <main class="relative flex-1 w-full h-full overflow-hidden">
+
+        <!-- ================= VIEW 1: GAME SCREEN (FISHING FIELD) ================= -->
+        <div id="view-game" class="w-full h-full relative flex flex-col justify-between p-2 sm:p-4">
+            
+            <!-- Dynamic Canvas Background -->
+            <canvas id="gameCanvas" class="absolute inset-0 w-full h-full z-0"></canvas>
+
+            <!-- Top Overlay: Status / Distance / Fish Alert -->
+            <div class="relative z-10 flex justify-between items-start pointer-events-none gap-1.5 sm:gap-2">
+                <div class="bg-slate-900/85 p-2 sm:p-3 rounded-xl sm:rounded-2xl border border-slate-700/60 backdrop-blur-md max-w-[150px] sm:max-w-xs space-y-0.5">
+                    <div class="text-[10px] sm:text-xs text-cyan-300 font-bold uppercase tracking-wider">タックル状況</div>
+                    <div class="text-[10px] sm:text-xs text-slate-200 truncate" id="current-tackle-summary">ロッド: 初心者 | リール: 1000</div>
+                    <div class="text-[10px] sm:text-xs text-amber-300 truncate" id="current-lure-summary">仕掛け: 定番ミノー</div>
+                </div>
+
+                <!-- Distance / Action Overlay -->
+                <div class="text-center space-y-1 sm:space-y-2">
+                    <div id="action-badge" class="hidden inline-block px-3 sm:px-5 py-1 sm:py-2 bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 font-black text-white rounded-full text-xs sm:text-base shadow-xl animate-bounce border border-amber-300">
+                        アクション: トゥイッチ！
+                    </div>
+                    <div id="distance-display" class="bg-slate-900/85 px-2.5 sm:px-4 py-1 sm:py-2 rounded-xl sm:rounded-2xl border border-cyan-500/40 text-cyan-300 font-mono text-sm sm:text-xl font-black backdrop-blur-md shadow-lg">
+                        水深: 3.5m | 距離: --m
+                    </div>
+                </div>
+
+                <!-- Catch Log / Fish Radar -->
+                <div class="bg-slate-900/85 p-2 sm:p-3 rounded-xl sm:rounded-2xl border border-slate-700/60 backdrop-blur-md text-right max-w-[130px] sm:max-w-none">
+                    <div class="text-[10px] sm:text-xs text-emerald-400 font-bold"><i class="fa-solid fa-radar animate-pulse"></i> 魚探</div>
+                    <div class="text-[10px] sm:text-xs text-slate-300 mt-0.5 truncate" id="radar-status">探索中...</div>
+                </div>
+            </div>
+
+            <!-- Central HUD Messages & Hooking UI -->
+            <div class="relative z-10 flex flex-col items-center justify-center pointer-events-none my-auto">
+                <div id="hud-message" class="text-3xl sm:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-amber-400 to-red-500 drop-shadow-[0_5px_5px_rgba(0,0,0,0.8)] transition-all transform scale-0 duration-300 text-center px-2">
+                    HIT!!
+                </div>
+
+                <!-- HOOKING (アワセ) OVERLAY BUTTON -->
+                <div id="hooking-hud" class="hidden pointer-events-auto my-2 text-center animate-bounce">
+                    <button onclick="executeHooking()" class="px-6 sm:px-10 py-3 sm:py-5 bg-gradient-to-r from-red-600 via-amber-500 to-yellow-400 hover:from-red-500 hover:to-yellow-300 text-slate-950 font-black text-lg sm:text-2xl rounded-2xl sm:rounded-3xl shadow-[0_0_30px_rgba(245,158,11,0.8)] border-2 sm:border-4 border-amber-200 transform active:scale-90 transition">
+                        <i class="fa-solid fa-hand-fist"></i> 今だ！アワセを入れる！！
+                    </button>
+                    <p class="text-[10px] sm:text-xs text-amber-300 font-bold bg-slate-900/90 px-2.5 py-0.5 rounded-full mt-1.5 inline-block border border-amber-500/50">喰い込んだタイミングで合わせろ！</p>
+                </div>
+
+                <!-- Fight Bar Overlay -->
+                <div id="fight-hud" class="hidden w-full max-w-xs sm:max-w-md bg-slate-900/90 p-3 sm:p-4 rounded-2xl sm:rounded-3xl border border-amber-500/50 shadow-2xl backdrop-blur-md mt-2 pointer-events-auto space-y-2 sm:space-y-3">
+                    <div class="flex justify-between text-[11px] sm:text-xs font-bold">
+                        <span class="text-emerald-400">LINE TENSION</span>
+                        <span id="tension-value" class="text-slate-200">50%</span>
+                    </div>
+                    <div class="w-full bg-slate-800 h-4 sm:h-6 rounded-full overflow-hidden p-0.5 sm:p-1 border border-slate-700">
+                        <div id="tension-bar" class="h-full rounded-full bg-gradient-to-r from-green-500 via-yellow-400 to-red-500 transition-all duration-75 w-1/2"></div>
+                    </div>
+                    <div class="flex justify-between text-[11px] sm:text-xs font-bold">
+                        <span class="text-cyan-400">魚の体力</span>
+                        <span id="fish-hp-value" class="text-slate-200">100%</span>
+                    </div>
+                    <div class="w-full bg-slate-800 h-3 sm:h-4 rounded-full overflow-hidden p-0.5 border border-slate-700">
+                        <div id="fish-hp-bar" class="h-full rounded-full bg-cyan-400 transition-all duration-100 w-full"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bottom Control Panel -->
+            <div class="relative z-10 w-full max-w-3xl mx-auto bg-slate-900/90 p-2.5 sm:p-4 rounded-2xl sm:rounded-3xl border border-slate-700/80 backdrop-blur-xl shadow-2xl flex flex-col gap-2 sm:gap-3">
+                
+                <!-- Rig / Fishing Mode Selector -->
+                <div class="flex items-center justify-between border-b border-slate-800 pb-1.5 sm:pb-2">
+                    <span class="text-[11px] sm:text-xs font-bold text-cyan-400"><i class="fa-solid fa-layer-group"></i> 釣法:</span>
+                    <div class="flex gap-1 sm:gap-2" id="rig-mode-buttons-container">
+                        <button onclick="selectRigMode('lure')" id="btn-rig-lure" class="px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-bold bg-cyan-600 text-white shadow">ルアー</button>
+                        <button onclick="selectRigMode('livebait')" id="btn-rig-livebait" class="px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-bold bg-slate-800 text-slate-300 hover:bg-slate-700">泳がせ</button>
+                        <button onclick="selectRigMode('bottom')" id="btn-rig-bottom" class="px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-bold bg-slate-800 text-slate-300 hover:bg-slate-700">ぶっこみ</button>
+                    </div>
+                </div>
+
+                <!-- PHASE 1: CAST CONTROLS -->
+                <div id="controls-cast" class="space-y-2 sm:space-y-3">
+                    <div class="flex justify-between items-center text-[11px] sm:text-xs font-bold text-slate-300">
+                        <span id="cast-mode-title"><i class="fa-solid fa-gauge-high text-cyan-400"></i> キャストパワー</span>
+                        <span class="text-amber-400 text-[10px] sm:text-xs">タイミングを合わせろ！</span>
+                    </div>
+                    <div class="w-full bg-slate-800 h-3.5 sm:h-4 rounded-full overflow-hidden p-0.5 border border-slate-700">
+                        <div id="cast-power-bar" class="h-full bg-gradient-to-r from-cyan-500 via-amber-400 to-red-500 rounded-full transition-all duration-75 w-0"></div>
+                    </div>
+                    <button id="cast-btn" onclick="handleCastButton()" class="w-full py-2.5 sm:py-3 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-black text-base sm:text-lg rounded-xl sm:rounded-2xl shadow-lg shadow-cyan-500/30 transition transform active:scale-95 flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-paper-plane"></i> キャストする！
+                    </button>
+                </div>
+
+                <!-- PHASE 2: UNDERWATER / ACTION CONTROLS -->
+                <div id="controls-underwater" class="hidden grid grid-cols-2 sm:grid-cols-4 gap-1.5 sm:gap-2">
+                    <!-- Dynamic Action Buttons -->
+                </div>
+
+                <!-- PHASE 3: FIGHT / REEL CONTROLS -->
+                <div id="controls-fight" class="hidden grid grid-cols-2 gap-2 sm:gap-3">
+                    <button onmousedown="startReeling()" onmouseup="stopReeling()" ontouchstart="startReeling()" ontouchend="stopReeling()" class="py-2.5 sm:py-3 bg-gradient-to-r from-amber-500 to-red-600 hover:from-amber-400 hover:to-red-500 text-white font-black text-sm sm:text-base rounded-xl sm:rounded-2xl shadow-xl transition transform active:scale-95 flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-rotate-right animate-spin"></i> 巻く (長押し)
+                    </button>
+                    <button onclick="adjustDrag()" class="py-2.5 sm:py-3 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-amber-300 font-bold text-xs sm:text-sm rounded-xl sm:rounded-2xl shadow transition flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-sliders"></i> ドラグ調整
+                    </button>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- ================= VIEW 2: QUESTS / MISSIONS ================= -->
+        <div id="view-quests" class="hidden w-full h-full p-3 sm:p-6 overflow-y-auto bg-slate-950">
+            <div class="max-w-4xl mx-auto space-y-4 sm:space-y-6">
+                <div class="border-b border-slate-800 pb-3 sm:pb-4">
+                    <h2 class="text-xl sm:text-2xl font-black text-amber-400"><i class="fa-solid fa-list-check"></i> 鹿児島釣行 任務</h2>
+                    <p class="text-slate-400 text-xs sm:text-sm">ミッションをクリアして報酬金を獲得しよう！</p>
+                </div>
+
+                <div id="quests-list-container" class="space-y-2.5 sm:space-y-3">
+                    <!-- Dynamic Quest List -->
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= VIEW 3: AQUARIUM (マイ水族館) ================= -->
+        <div id="view-aquarium" class="hidden w-full h-full relative flex flex-col justify-between p-2 sm:p-4 bg-slate-950">
+            <div class="relative z-10 flex flex-col sm:flex-row justify-between sm:items-center border-b border-slate-800 pb-2 sm:pb-3 gap-2">
+                <div>
+                    <h2 class="text-lg sm:text-2xl font-black text-cyan-300 flex items-center gap-2">
+                        <i class="fa-solid fa-water text-cyan-400"></i> マイ鹿児島水族館
+                    </h2>
+                    <p class="text-[11px] sm:text-xs text-slate-400">キープした魚たちが泳ぐ水槽。エサやりや売却が可能です！</p>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="feedAquariumFish()" class="flex-1 sm:flex-none px-2.5 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white text-[11px] sm:text-xs font-black rounded-xl shadow transition flex items-center justify-center gap-1">
+                        <i class="fa-solid fa-cookie-bite"></i> エサやり
+                    </button>
+                    <button onclick="sellAllAquariumFish()" class="flex-1 sm:flex-none px-2.5 py-1.5 bg-gradient-to-r from-amber-600 to-yellow-600 text-white text-[11px] sm:text-xs font-black rounded-xl shadow transition flex items-center justify-center gap-1">
+                        <i class="fa-solid fa-coins"></i> 一括売却
+                    </button>
+                </div>
+            </div>
+
+            <!-- Canvas for Aquarium display -->
+            <div class="relative flex-1 my-2 sm:my-3 rounded-2xl sm:rounded-3xl overflow-hidden border-2 border-cyan-500/30 shadow-2xl min-h-[160px]">
+                <canvas id="aquariumCanvas" class="w-full h-full block"></canvas>
+            </div>
+
+            <!-- Aquarium List View -->
+            <div class="relative z-10 bg-slate-900/90 border border-slate-800 rounded-xl sm:rounded-2xl p-2.5 sm:p-3 max-h-36 sm:max-h-40 overflow-y-auto">
+                <div class="text-xs font-bold text-slate-300 mb-1.5 flex justify-between items-center">
+                    <span><i class="fa-solid fa-list-check text-cyan-400"></i> 水族館の飼育リスト (<span id="aquarium-count">0</span>匹)</span>
+                </div>
+                <div id="aquarium-list-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                    <!-- Rendered by JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= VIEW 4: MAP SELECT ================= -->
+        <div id="view-map" class="hidden w-full h-full p-3 sm:p-6 overflow-y-auto bg-slate-950">
+            <div class="max-w-5xl mx-auto space-y-4 sm:space-y-6 pb-6">
+                <div class="border-b border-slate-800 pb-3 sm:pb-4">
+                    <h2 class="text-xl sm:text-2xl font-black text-cyan-400"><i class="fa-solid fa-map-marked-alt"></i> 鹿児島県 遠征マップ</h2>
+                    <p class="text-slate-400 text-xs sm:text-sm">釣行するフィールドを選択してください。全8箇所！</p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-6" id="map-spots-grid">
+                    <!-- Dynamic spots -->
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= VIEW 5: TACKLE SHOP ================= -->
+        <div id="view-shop" class="hidden w-full h-full p-3 sm:p-6 overflow-y-auto bg-slate-950">
+            <div class="max-w-5xl mx-auto space-y-4 sm:space-y-6 pb-6">
+                <div class="flex justify-between items-end border-b border-slate-800 pb-3 sm:pb-4 flex-wrap gap-2">
+                    <div>
+                        <h2 class="text-xl sm:text-2xl font-black text-amber-400"><i class="fa-solid fa-cart-shopping"></i> かごしま釣具店</h2>
+                        <p class="text-slate-400 text-xs sm:text-sm">最新のルアーや強力なタックルを揃えよう！</p>
+                    </div>
+                    <div class="flex gap-1.5 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0">
+                        <button onclick="filterShopCategory('lure')" id="tab-shop-lure" class="shop-tab active px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl text-xs font-bold bg-amber-600 text-white shrink-0">ルアー</button>
+                        <button onclick="filterShopCategory('rod')" id="tab-shop-rod" class="shop-tab px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl text-xs font-bold bg-slate-800 text-slate-300 shrink-0">ロッド</button>
+                        <button onclick="filterShopCategory('reel')" id="tab-shop-reel" class="shop-tab px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl text-xs font-bold bg-slate-800 text-slate-300 shrink-0">リール</button>
+                        <button onclick="filterShopCategory('line')" id="tab-shop-line" class="shop-tab px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl text-xs font-bold bg-slate-800 text-slate-300 shrink-0">ライン</button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4" id="shop-items-grid">
+                    <!-- Dynamic Shop Items -->
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= VIEW 6: TACKLE BOX & INVENTORY ================= -->
+        <div id="view-tackle" class="hidden w-full h-full p-3 sm:p-6 overflow-y-auto bg-slate-950">
+            <div class="max-w-5xl mx-auto space-y-4 sm:space-y-6 pb-6">
+                <div class="border-b border-slate-800 pb-3 sm:pb-4">
+                    <h2 class="text-xl sm:text-2xl font-black text-emerald-400"><i class="fa-solid fa-boxes-packing"></i> タックルボックス & 図鑑</h2>
+                    <p class="text-slate-400 text-xs sm:text-sm">装備の確認や釣り上げた記録を確認できます。</p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
+                    <div class="bg-slate-900 p-4 sm:p-5 rounded-2xl border border-slate-800 space-y-3 sm:space-y-4">
+                        <h3 class="font-bold text-amber-400 border-b border-slate-800 pb-2 text-sm sm:text-base"><i class="fa-solid fa-user-gear"></i> 現在の装備</h3>
+                        <div class="space-y-2.5 sm:space-y-3" id="equipped-items-list">
+                            <!-- Rendered by JS -->
+                        </div>
+                    </div>
+
+                    <div class="md:col-span-2 bg-slate-900 p-4 sm:p-5 rounded-2xl border border-slate-800 space-y-3 sm:space-y-4">
+                        <h3 class="font-bold text-cyan-400 border-b border-slate-800 pb-2 flex justify-between text-sm sm:text-base">
+                            <span><i class="fa-solid fa-book-bookmark"></i> 鹿児島 釣果図鑑</span>
+                            <span class="text-xs text-slate-400" id="fish-count-status">0 / 14 種達成</span>
+                        </h3>
+                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-3" id="fish-book-grid">
+                            <!-- Rendered by JS -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- CATCH RESULT MODAL -->
+    <div id="modal-catch" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 border-2 border-amber-500/80 rounded-3xl p-6 max-w-md w-full shadow-2xl text-center space-y-4 transform scale-95 transition-all">
+            <div class="text-amber-400 font-black text-xl uppercase tracking-widest" id="modal-catch-header"><i class="fa-solid fa-trophy"></i> CATCH!!</div>
+            
+            <div class="py-2">
+                <div id="modal-fish-icon" class="text-6xl text-cyan-400 mb-2"><i class="fa-solid fa-fish"></i></div>
+                <h3 id="modal-fish-name" class="text-2xl font-black text-white">ブリ (75cm)</h3>
+                <p id="modal-fish-desc" class="text-xs text-slate-400 mt-1">錦江湾の回遊力あふれる青物！</p>
+                
+                <div class="grid grid-cols-2 gap-3 mt-4 pt-4 border-t border-slate-800">
+                    <div class="bg-slate-800/60 p-2.5 rounded-xl border border-slate-700">
+                        <div class="text-[10px] text-slate-400 font-bold uppercase">サイズ・ランク</div>
+                        <div class="text-base font-black text-cyan-300 font-mono" id="modal-fish-size">75 cm</div>
+                    </div>
+                    <div class="bg-slate-800/60 p-2.5 rounded-xl border border-slate-700">
+                        <div class="text-[10px] text-slate-400 font-bold uppercase">市場売却価格</div>
+                        <div class="text-base font-black text-amber-300 font-mono" id="modal-fish-price">¥5,500</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Choice Action Buttons -->
+            <div class="space-y-2">
+                <button onclick="confirmCatchAction('sell')" class="w-full py-2.5 bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500 text-white font-black text-xs rounded-xl shadow transition flex items-center justify-center gap-1">
+                    <i class="fa-solid fa-coins"></i> すぐに市場で売却 (現金化)
+                </button>
+
+                <button onclick="confirmCatchAction('aquarium')" class="w-full py-2.5 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-black text-xs rounded-xl shadow transition flex items-center justify-center gap-1">
+                    <i class="fa-solid fa-water"></i> 水族館へ送り泳がせる
+                </button>
+
+                <div id="modal-bait-option" class="hidden">
+                    <button onclick="confirmCatchAction('bait')" class="w-full py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs rounded-xl shadow transition flex items-center justify-center gap-1">
+                        <i class="fa-solid fa-bucket"></i> 生きエサバケツにキープ
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- BAIT BUCKET SELECTOR MODAL -->
+    <div id="modal-bait-bucket" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 border-2 border-emerald-500/80 rounded-3xl p-6 max-w-md w-full shadow-2xl text-center space-y-4">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+                <h3 class="text-lg font-black text-emerald-400 flex items-center gap-2">
+                    <i class="fa-solid fa-bucket"></i> 生きエサバケツ
+                </h3>
+                <button onclick="closeBaitBucketModal()" class="text-slate-400 hover:text-white text-xl font-bold">&times;</button>
+            </div>
+            
+            <p class="text-xs text-slate-400 text-left">泳がせ釣り・ぶっこみ釣りに使用するエサを選択してください。選択中のエサが次のキャストで投入されます。</p>
+
+            <div id="bait-list-container" class="space-y-2 max-h-60 overflow-y-auto pr-1">
+                <!-- Rendered by JS -->
+            </div>
+
+            <button onclick="closeBaitBucketModal()" class="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs rounded-xl transition">
+                閉じる
+            </button>
+        </div>
+    </div>
+
+    <script>
+        /* Game State Definition */
+        const gameState = {
+            money: 10000,
+            currentLocationId: 'shigetomi',
+            timeOfDay: 'morning', // 'morning', 'day', 'evening', 'night'
+            weather: 'sunny', // 'sunny', 'cloudy', 'rain'
+            rigMode: 'lure', // 'lure', 'livebait', 'bottom'
+            baitBucket: [], // Small fishes kept for live bait
+            aquarium: [], // Fishes kept in Aquarium
+            selectedBaitIndex: 0,
+            phase: 'cast', // 'cast', 'underwater', 'hooking', 'fight'
+            castPower: 0,
+            castPowerDirection: 1,
+            powerInterval: null,
+            autoBiteTimeout: null,
+            hookingTimeout: null,
+            lureDistance: 0,
+            lureDepth: 3.5,
+            lureAction: 'none',
+            actionOffsetX: 0,
+            actionOffsetY: 0,
+            activeFish: null,
+            lineTension: 40,
+            fishHp: 100,
+            isReeling: false,
+            dragSetting: 1.0,
+            totalFishCaughtCount: 0,
+            
+            equipped: {
+                rod: 'rod_beginner',
+                reel: 'reel_1000',
+                line: 'line_mono',
+                lure: 'lure_minnow'
+            },
+            
+            inventory: {
+                rods: ['rod_beginner'],
+                reels: ['reel_1000'],
+                lines: ['line_mono'],
+                lures: ['lure_minnow', 'lure_pencil']
+            },
+
+            caughtFishCount: {},
+            caughtFishMaxSize: {},
+
+            quests: [
+                { id: 'q1', title: '初心者アングラー', desc: '魚を合計3匹釣り上げる', target: 3, current: 0, reward: 2000, completed: false },
+                { id: 'q2', title: '錦江湾の青物退治', desc: 'ブリまたはヒラマサを1匹釣る', target: 'buri_or_hiramasa', current: 0, reward: 5000, completed: false },
+                { id: 'q3', title: '生きエサ使いの手練れ', desc: '泳がせ釣りで魚を2匹釣る', target: 2, current: 0, reqMode: 'livebait', reward: 6000, completed: false },
+                { id: 'q4', title: '伝説のモンスター遭遇', desc: 'アカメ・GT・クエのいずれかを釣る', target: 'monster', current: 0, reward: 20000, completed: false }
+            ]
+        };
+
+        let canvas, ctx;
+        let aquariumCanvas, aquariumCtx;
+        let shopCategoryFilter = 'lure';
+
+        // 1. Kagoshima Map Spots Data
+        const SPOTS = [
+            {
+                id: 'shigetomi',
+                name: '重富漁港（姶良市）',
+                subtitle: '波穏やかな内湾堤防。ファミリーから初心者まで安心して楽しめる入門ポイント。',
+                difficulty: '★☆☆☆☆☆',
+                icon: 'fa-anchor',
+                skyColors: ['#38bdf8', '#0284c7', '#1e3a8a'],
+                seaType: 'harbor',
+                underwaterColors: ['#0284c7', '#0c4a6e', '#091e3a'],
+                fishList: ['kasaigo', 'chinu', 'aji']
+            },
+            {
+                id: 'kinkouwan',
+                name: '錦江湾・桜島沖（鹿児島市）',
+                subtitle: '雄大な桜島を目の前に望む深場ポイント。シーバスや良型青物が回遊する。',
+                difficulty: '★★☆☆☆☆',
+                icon: 'fa-mountain-sun',
+                skyColors: ['#f97316', '#0284c7', '#0f172a'],
+                seaType: 'volcano',
+                underwaterColors: ['#0369a1', '#0f2b48', '#051329'],
+                fishList: ['seabass', 'chinu', 'buri', 'kasaigo']
+            },
+            {
+                id: 'higashikushira',
+                name: '柏原海岸・肝属川河口（東串良町）',
+                subtitle: '太平洋サーフと大河川が交差する大物フィールド！幻の超怪魚「アカメ」生息地！',
+                difficulty: '★★★★☆☆',
+                icon: 'fa-umbrella-beach',
+                skyColors: ['#38bdf8', '#0369a1', '#0f172a'],
+                seaType: 'surf',
+                underwaterColors: ['#0284c7', '#075985', '#0c4a6e'],
+                fishList: ['akame', 'oonibe', 'hirame', 'magochi', 'seabass', 'aji']
+            },
+            {
+                id: 'kasasa',
+                name: '南さつま・笠沙 リアス海岸（南さつま市）',
+                subtitle: 'リアス式海岸の荒々しい岩礁帯。ヒラスズキや大型ロックフィッシュの好釣り場。',
+                difficulty: '★★★★☆☆',
+                icon: 'fa-hill-rockslide',
+                skyColors: ['#f43f5e', '#a855f7', '#1e1b4b'],
+                seaType: 'cliff',
+                underwaterColors: ['#0f766e', '#115e59', '#022c22'],
+                fishList: ['hirasuzuki', 'kue', 'kasaigo', 'magochi']
+            },
+            {
+                id: 'satamisaki',
+                name: '佐多岬 白波瀬（南大隅町）',
+                subtitle: '本土最南端の激流エリア！太平洋の強烈な黒潮が直接ぶつかる青物激戦区。',
+                difficulty: '★★★★☆☆',
+                icon: 'fa-water-ladders',
+                skyColors: ['#38bdf8', '#1d4ed8', '#020617'],
+                seaType: 'lighthouse',
+                underwaterColors: ['#0284c7', '#1e40af', '#020617'],
+                fishList: ['buri', 'hiramasa', 'tachiwo']
+            },
+            {
+                id: 'yakushima',
+                name: '屋久島 荒川港沖（屋久島町）',
+                subtitle: '世界遺産の島。太古の自然に育まれた太い黒潮が育む怪魚・GT（ロウニンアジ）の島。',
+                difficulty: '★★★★★☆',
+                icon: 'fa-tree',
+                skyColors: ['#10b981', '#0284c7', '#064e3b'],
+                seaType: 'jungle_island',
+                underwaterColors: ['#047857', '#065f46', '#022c22'],
+                fishList: ['gt', 'hiramasa', 'kue', 'buri']
+            },
+            {
+                id: 'amami',
+                name: '奄美大島 太平洋リーフ（奄美市）',
+                subtitle: '南国の透明度抜群なサンゴ礁エッジ。巨大GTや怪魚クエが浅場へ差し込む危険地帯。',
+                difficulty: '★★★★★☆',
+                icon: 'fa-sun',
+                skyColors: ['#06b6d4', '#0284c7', '#164e63'],
+                seaType: 'tropical_reef',
+                underwaterColors: ['#0891b2', '#0e7490', '#083344'],
+                fishList: ['gt', 'kue', 'hiramasa', 'hirame']
+            },
+            {
+                id: 'tokara',
+                name: 'トカラ列島 秘境の激流（十島村）',
+                subtitle: '日本最高の秘境！巨大GT・100kg超の超怪魚が潜む伝説の最高難易度フィールド。',
+                difficulty: '★★★★★★',
+                icon: 'fa-skull-crossbones',
+                skyColors: ['#ef4444', '#7f1d1d', '#0f172a'],
+                seaType: 'extreme_sea',
+                underwaterColors: ['#1e1b4b', '#311042', '#020617'],
+                fishList: ['gt', 'kue', 'oonibe', 'hiramasa', 'akame']
+            }
+        ];
+
+        // 2. Fish Master Species Data
+        const FISH_SPECIES = {
+            aji: { id: 'aji', name: 'マアジ (尺アジ)', minSize: 18, maxSize: 38, basePrice: 500, preferredActions: ['reel', 'twitch', 'bait_wait'], stamina: 20, pullPower: 15, desc: '堤防で人気の親しみやすい魚。泳がせ釣りの最高の生きエサにもなる！', color: '#94a3b8', isBait: true },
+            kasaigo: { id: 'kasaigo', name: 'カサゴ (アラカブ)', minSize: 15, maxSize: 32, basePrice: 800, preferredActions: ['stop', 'jerk', 'bottom_wait'], stamina: 25, pullPower: 20, desc: '岩礁帯に潜む鹿児島でおなじみのおいしい根魚。', color: '#ef4444', isBait: true },
+            chinu: { id: 'chinu', name: 'クロダイ (チヌ)', minSize: 30, maxSize: 55, basePrice: 1500, preferredActions: ['stop', 'reel', 'bottom_wait'], stamina: 40, pullPower: 35, desc: '警戒心が強く、力強い引きで釣り人を魅了する。', color: '#64748b' },
+            magochi: { id: 'magochi', name: 'マゴチ (照りゴチ)', minSize: 35, maxSize: 65, basePrice: 2000, preferredActions: ['jerk', 'stop', 'live_swim'], stamina: 45, pullPower: 40, desc: '東串良サーフの砂底に潜むフラットフィッシュ。', color: '#b45309' },
+            hirame: { id: 'hirame', name: 'ヒラメ (座布団ヒラメ)', minSize: 40, maxSize: 88, basePrice: 3500, preferredActions: ['twitch', 'stop', 'live_swim'], stamina: 55, pullPower: 50, desc: '柏原海岸のサーフで圧倒的人気を誇る高級ターゲット！', color: '#d97706' },
+            seabass: { id: 'seabass', name: 'マルスズキ', minSize: 40, maxSize: 90, basePrice: 2800, preferredActions: ['twitch', 'reel', 'live_swim'], stamina: 50, pullPower: 50, desc: 'エラ洗いでルアーを外そうとするエキサイティングなターゲット。', color: '#94a3b8' },
+            hirasuzuki: { id: 'hirasuzuki', name: 'ヒラスズキ (サラシの王者)', minSize: 45, maxSize: 95, basePrice: 4200, preferredActions: ['twitch', 'jerk', 'live_swim'], stamina: 65, pullPower: 65, desc: '笠沙の白波立つ荒根にひそむ磯の最高峰ターゲット。', color: '#cbd5e1' },
+            oonibe: { id: 'oonibe', name: 'オオニベ (東串良怪魚)', minSize: 75, maxSize: 150, basePrice: 9000, preferredActions: ['jerk', 'reel', 'live_swim', 'bottom_wait'], stamina: 95, pullPower: 90, desc: '肝属川河口付近のサーフで狙える1.5m超のモンスターフィッシュ！', color: '#e2e8f0' },
+            akame: { id: 'akame', name: 'アカメ (日本原産・伝説の幻魚)', minSize: 80, maxSize: 140, basePrice: 22000, preferredActions: ['live_swim', 'bottom_wait', 'stop'], stamina: 130, pullPower: 135, desc: '東串良・肝属川河口に潜む日本固有の伝説の怪魚！', color: '#854d0e', isRedEye: true },
+            tachiwo: { id: 'tachiwo', name: 'タチウオ (ドラゴン)', minSize: 60, maxSize: 130, basePrice: 3200, preferredActions: ['jerk', 'stop'], stamina: 45, pullPower: 45, desc: '銀色に輝く刀のような魚。鋭い歯に注意！', color: '#f1f5f9' },
+            buri: { id: 'buri', name: 'ブリ (メジロ)', minSize: 60, maxSize: 108, basePrice: 5500, preferredActions: ['reel', 'jerk', 'live_swim'], stamina: 70, pullPower: 75, desc: '強烈な高速走りでラインを吐き出す回遊魚。', color: '#3b82f6' },
+            hiramasa: { id: 'hiramasa', name: 'ヒラマサ (海のオオカミ)', minSize: 70, maxSize: 135, basePrice: 9500, preferredActions: ['jerk', 'twitch', 'live_swim'], stamina: 95, pullPower: 100, desc: '「海のオオカミ」と呼ばれる圧巻のパワーファイター。', color: '#eab308' },
+            kue: { id: 'kue', name: 'クエ (アラ・幻の巨魚)', minSize: 65, maxSize: 130, basePrice: 15000, preferredActions: ['stop', 'jerk', 'bottom_wait', 'live_swim'], stamina: 110, pullPower: 120, desc: '根に入られたら最後！ぶっこみ釣り・泳がせ釣りで狙う最高級根魚。', color: '#475569' },
+            gt: { id: 'gt', name: 'ロウニンアジ (GT)', minSize: 85, maxSize: 175, basePrice: 28000, preferredActions: ['twitch', 'reel', 'live_swim'], stamina: 140, pullPower: 150, desc: 'ルアーフィッシング最高峰の巨大怪魚。圧倒的な重量感！', color: '#1e293b' }
+        };
+
+        // 3. Shop Items Catalog
+        const SHOP_ITEMS = {
+            lure: [
+                { id: 'lure_minnow', name: '定番ミノー 10g', price: 0, desc: '小魚の動きを模した基本ルアー。' },
+                { id: 'lure_pencil', name: 'ペンシルベイト 15g', price: 1200, desc: '水面ドッグウォークでドカンと食わせる。' },
+                { id: 'lure_jig', name: 'メタルジグ 40g', price: 2500, desc: '飛距離抜群！青物やオオニベの直撃に！' },
+                { id: 'lure_vibe', name: 'バイブレーション 28g', price: 3800, desc: '強烈な波動で広範囲の魚へアピール。' },
+                { id: 'lure_bigbait', name: 'ジャイアントベイト 120g', price: 15000, desc: 'アカメや巨クエ、GT専用の超特大ルアー！' }
+            ],
+            rod: [
+                { id: 'rod_beginner', name: '初心者エギングロッド', price: 0, castBonus: 1.0, powerBonus: 1.0, desc: '使いやすい万能入門ロッド。' },
+                { id: 'rod_seabass', name: '錦江湾シーバスロッド', price: 8000, castBonus: 1.25, powerBonus: 1.3, desc: 'しなやかでバラシにくい本格派。' },
+                { id: 'rod_shorejig', name: '佐多岬 ショアジギロッド', price: 22000, castBonus: 1.5, powerBonus: 1.7, desc: '大型青物の走りを力強く止める剛腕。' },
+                { id: 'rod_monster', name: 'トカラGTモンスターロッド', price: 65000, castBonus: 1.85, powerBonus: 2.5, desc: '100kg超の超怪魚とも真っ向勝負可能！' }
+            ],
+            reel: [
+                { id: 'reel_1000', name: '1000番 スピニング', price: 0, reelSpeed: 1.0, desc: '標準的な初心者用リール。' },
+                { id: 'reel_3000', name: '3000番 ハイギア', price: 6000, reelSpeed: 1.35, desc: '巻き上げ速度がアップし手返し力良好。' },
+                { id: 'reel_5000', name: '5000番 パワーリール', price: 18000, reelSpeed: 1.7, desc: '力強いトルクで大型魚を引き寄せる。' },
+                { id: 'reel_sw8000', name: 'SW8000番 超大型リール', price: 50000, reelSpeed: 2.2, desc: '怪魚相手でも軽々と巻き上げる最高級リール。' }
+            ],
+            line: [
+                { id: 'line_mono', name: 'ナイロンライン 2号', price: 0, tensionLimit: 100, desc: 'しなやかで扱いやすい標準ライン。' },
+                { id: 'line_pe15', name: 'PEライン 1.5号', price: 3000, tensionLimit: 140, desc: '感度抜群で強度もアップ。' },
+                { id: 'line_pe3', name: 'PEライン 3号', price: 9000, tensionLimit: 200, desc: '青物や大型ヒラメに対応できる強力ライン。' },
+                { id: 'line_monster', name: '怪魚スペシャライン 8号', price: 25000, tensionLimit: 320, desc: 'アカメ・GT・巨大クエの強烈な突進に耐え抜く。' }
+            ]
+        };
+
+        function initCanvas() {
+            canvas = document.getElementById('gameCanvas');
+            if (canvas) ctx = canvas.getContext('2d');
+
+            aquariumCanvas = document.getElementById('aquariumCanvas');
+            if (aquariumCanvas) aquariumCtx = aquariumCanvas.getContext('2d');
+
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+        }
+
+        function resizeCanvas() {
+            if (canvas && canvas.parentElement) {
+                canvas.width = canvas.parentElement.clientWidth;
+                canvas.height = canvas.parentElement.clientHeight;
+            }
+            if (aquariumCanvas && aquariumCanvas.parentElement) {
+                aquariumCanvas.width = aquariumCanvas.parentElement.clientWidth;
+                aquariumCanvas.height = aquariumCanvas.parentElement.clientHeight;
+            }
+        }
+
+        function renderGameCanvas() {
+            if (ctx && canvas) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                const spot = SPOTS.find(s => s.id === gameState.currentLocationId) || SPOTS[0];
+
+                if (gameState.phase === 'cast') {
+                    drawShoreView(spot);
+                } else {
+                    drawUnderwaterView(spot);
+                }
+            }
+
+            if (aquariumCtx && aquariumCanvas && !document.getElementById('view-aquarium').classList.contains('hidden')) {
+                renderAquariumCanvas();
+            }
+
+            requestAnimationFrame(renderGameCanvas);
+        }
+
+        function renderAquariumCanvas() {
+            const w = aquariumCanvas.width;
+            const h = aquariumCanvas.height;
+
+            const tankGrad = aquariumCtx.createLinearGradient(0, 0, 0, h);
+            tankGrad.addColorStop(0, '#0284c7');
+            tankGrad.addColorStop(0.5, '#0369a1');
+            tankGrad.addColorStop(1, '#082f49');
+            aquariumCtx.fillStyle = tankGrad;
+            aquariumCtx.fillRect(0, 0, w, h);
+
+            // Light rays
+            aquariumCtx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+            for (let i = 0; i < 5; i++) {
+                aquariumCtx.beginPath();
+                aquariumCtx.moveTo(w * (0.15 + i * 0.18), 0);
+                aquariumCtx.lineTo(w * (0.25 + i * 0.18), h);
+                aquariumCtx.lineTo(w * (0.32 + i * 0.18), h);
+                aquariumCtx.lineTo(w * (0.18 + i * 0.18), 0);
+                aquariumCtx.fill();
+            }
+
+            aquariumCtx.fillStyle = '#1e293b';
+            aquariumCtx.fillRect(0, h * 0.88, w, h * 0.12);
+
+            const now = Date.now();
+            gameState.aquarium.forEach((fish, idx) => {
+                if (fish.x === undefined) fish.x = Math.random() * (w * 0.8) + (w * 0.1);
+                if (fish.y === undefined) fish.y = Math.random() * (h * 0.6) + (h * 0.15);
+                if (fish.vx === undefined) fish.vx = (Math.random() > 0.5 ? 1 : -1) * (0.8 + Math.random() * 0.8);
+                if (fish.vy === undefined) fish.vy = (Math.random() - 0.5) * 0.4;
+
+                fish.x += fish.vx;
+                fish.y += fish.vy + Math.sin(now * 0.002 + idx) * 0.2;
+
+                if (fish.x < 40) { fish.x = 40; fish.vx *= -1; }
+                if (fish.x > w - 40) { fish.x = w - 40; fish.vx *= -1; }
+                if (fish.y < 30) { fish.y = 30; fish.vy *= -1; }
+                if (fish.y > h * 0.82) { fish.y = h * 0.82; fish.vy *= -1; }
+
+                aquariumCtx.save();
+                aquariumCtx.translate(fish.x, fish.y);
+                if (fish.vx > 0) aquariumCtx.scale(-1, 1);
+
+                aquariumCtx.fillStyle = fish.species.color || '#3b82f6';
+                aquariumCtx.beginPath();
+                aquariumCtx.ellipse(0, 0, 32, 15, 0, 0, Math.PI * 2);
+                aquariumCtx.fill();
+
+                const tailWiggle = Math.sin(now * 0.01 + idx) * 10;
+                aquariumCtx.save();
+                aquariumCtx.translate(28, 0);
+                aquariumCtx.rotate((tailWiggle * Math.PI) / 180);
+                aquariumCtx.beginPath();
+                aquariumCtx.moveTo(0, 0);
+                aquariumCtx.lineTo(16, -14);
+                aquariumCtx.lineTo(16, 14);
+                aquariumCtx.closePath();
+                aquariumCtx.fillStyle = fish.species.color || '#3b82f6';
+                aquariumCtx.fill();
+                aquariumCtx.restore();
+
+                aquariumCtx.fillStyle = '#ffffff';
+                aquariumCtx.beginPath();
+                aquariumCtx.arc(-18, -3, 4, 0, Math.PI * 2);
+                aquariumCtx.fill();
+                aquariumCtx.fillStyle = fish.species.isRedEye ? '#ef4444' : '#000000';
+                aquariumCtx.beginPath();
+                aquariumCtx.arc(-18, -3, 2, 0, Math.PI * 2);
+                aquariumCtx.fill();
+
+                aquariumCtx.restore();
+            });
+        }
+
+        function drawShoreView(spot) {
+            const w = canvas.width;
+            const h = canvas.height;
+
+            let skyColor1 = spot.skyColors[0];
+            let skyColor2 = spot.skyColors[1];
+            let skyColor3 = spot.skyColors[2];
+
+            if (gameState.timeOfDay === 'evening') {
+                skyColor1 = '#f97316';
+                skyColor2 = '#c026d3';
+                skyColor3 = '#311042';
+            } else if (gameState.timeOfDay === 'night') {
+                skyColor1 = '#0f172a';
+                skyColor2 = '#020617';
+                skyColor3 = '#000000';
+            }
+
+            const skyGrad = ctx.createLinearGradient(0, 0, 0, h * 0.65);
+            skyGrad.addColorStop(0, skyColor1);
+            skyGrad.addColorStop(0.5, skyColor2);
+            skyGrad.addColorStop(1, skyColor3);
+            ctx.fillStyle = skyGrad;
+            ctx.fillRect(0, 0, w, h * 0.65);
+
+            if (spot.seaType === 'volcano' || spot.seaType === 'harbor') {
+                ctx.fillStyle = '#0f172a';
+                ctx.beginPath();
+                ctx.moveTo(w * 0.2, h * 0.65);
+                ctx.lineTo(w * 0.45, h * 0.35);
+                ctx.lineTo(w * 0.52, h * 0.38);
+                ctx.lineTo(w * 0.75, h * 0.65);
+                ctx.closePath();
+                ctx.fill();
+            }
+
+            const seaGrad = ctx.createLinearGradient(0, h * 0.65, 0, h);
+            seaGrad.addColorStop(0, '#0284c7');
+            seaGrad.addColorStop(0.5, '#0369a1');
+            seaGrad.addColorStop(1, '#0c4a6e');
+            ctx.fillStyle = seaGrad;
+            ctx.fillRect(0, h * 0.65, w, h * 0.35);
+
+            ctx.fillStyle = '#1e293b';
+            ctx.beginPath();
+            ctx.moveTo(0, h);
+            ctx.lineTo(w * 0.35, h * 0.78);
+            ctx.lineTo(w * 0.38, h);
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        function drawUnderwaterView(spot) {
+            const w = canvas.width;
+            const h = canvas.height;
+
+            const seaGrad = ctx.createLinearGradient(0, 0, 0, h);
+            seaGrad.addColorStop(0, spot.underwaterColors[0]);
+            seaGrad.addColorStop(0.5, spot.underwaterColors[1]);
+            seaGrad.addColorStop(1, spot.underwaterColors[2]);
+            ctx.fillStyle = seaGrad;
+            ctx.fillRect(0, 0, w, h);
+
+            ctx.fillStyle = '#0f172a';
+            ctx.beginPath();
+            ctx.moveTo(0, h * 0.82);
+            for (let x = 0; x <= w; x += 50) {
+                let sy = h * 0.82 + Math.sin(x * 0.01) * 15;
+                ctx.lineTo(x, sy);
+            }
+            ctx.lineTo(w, h);
+            ctx.lineTo(0, h);
+            ctx.fill();
+
+            const progress = Math.min(1.0, gameState.lureDistance / 100);
+            const lureX = w * 0.2 + progress * (w * 0.55) + gameState.actionOffsetX;
+            const lureY = h * 0.25 + (gameState.lureDepth / 20.0) * (h * 0.5) + gameState.actionOffsetY;
+
+            // 糸を描画
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(20, 20);
+            ctx.lineTo(lureX, lureY);
+            ctx.stroke();
+
+            // 釣法に応じた仕掛け（ルアーまたは生きエサ）の描画
+            if (gameState.rigMode === 'lure') {
+                // ルアー表示（オレンジの丸ルアー）
+                ctx.fillStyle = '#f59e0b';
+                ctx.beginPath();
+                ctx.arc(lureX, lureY, 7, 0, Math.PI * 2);
+                ctx.fill();
+            } else {
+                // 泳がせ釣り・ぶっこみ釣り：生きエサ（魚グラフィック）の表示
+                ctx.save();
+                ctx.translate(lureX, lureY);
+                ctx.fillStyle = '#34d399'; // エサ用カラー（エメラルドグリーン）
+                ctx.beginPath();
+                ctx.ellipse(0, 0, 14, 7, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                // エサの尾びれ
+                ctx.beginPath();
+                ctx.moveTo(10, 0);
+                ctx.lineTo(16, -6);
+                ctx.lineTo(16, 6);
+                ctx.closePath();
+                ctx.fillStyle = '#10b981';
+                ctx.fill();
+
+                // エサの目
+                ctx.fillStyle = '#ffffff';
+                ctx.beginPath();
+                ctx.arc(-8, -2, 2.5, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#000000';
+                ctx.beginPath();
+                ctx.arc(-8, -2, 1, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.restore();
+            }
+
+            if (gameState.activeFish) {
+                drawActiveFish(lureX, lureY);
+            }
+        }
+
+        function drawActiveFish(lureX, lureY) {
+            if (!gameState.activeFish || !gameState.activeFish.species) return;
+            const fish = gameState.activeFish;
+            ctx.save();
+
+            let targetX = lureX;
+            let targetY = lureY;
+
+            if (gameState.phase === 'fight') {
+                const now = Date.now();
+                const fightSpeed = gameState.isReeling ? 0.03 : 0.015;
+                const struggleX = Math.sin(now * fightSpeed) * (30 + (gameState.lineTension * 0.5));
+                const struggleY = Math.cos(now * fightSpeed * 1.3) * (20 + (gameState.lineTension * 0.3));
+
+                targetX = lureX + struggleX;
+                targetY = lureY + struggleY;
+            } else {
+                fish.distanceX += (0 - fish.distanceX) * 0.22;
+                fish.distanceY += (0 - fish.distanceY) * 0.22;
+                targetX = lureX + fish.distanceX;
+                targetY = lureY + fish.distanceY + 18;
+            }
+
+            ctx.translate(targetX, targetY);
+            if (fish.distanceX < 0) ctx.scale(-1, 1);
+
+            ctx.fillStyle = fish.species.color || '#3b82f6';
+            ctx.beginPath();
+            ctx.ellipse(0, 0, 44, 20, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(-24, -4, 5, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.fillStyle = fish.species.isRedEye ? '#ef4444' : '#000000';
+            ctx.beginPath();
+            ctx.arc(-24, -4, fish.species.isRedEye ? 3.5 : 2.5, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.restore();
+        }
+
+        function startCastPowerMeter() {
+            clearInterval(gameState.powerInterval);
+            gameState.castPower = 0;
+            gameState.castPowerDirection = 1;
+
+            gameState.powerInterval = setInterval(() => {
+                if (gameState.phase !== 'cast') return;
+                gameState.castPower += gameState.castPowerDirection * 4;
+                if (gameState.castPower >= 100) {
+                    gameState.castPower = 100;
+                    gameState.castPowerDirection = -1;
+                } else if (gameState.castPower <= 0) {
+                    gameState.castPower = 0;
+                    gameState.castPowerDirection = 1;
+                }
+
+                const bar = document.getElementById('cast-power-bar');
+                if (bar) bar.style.width = `${gameState.castPower}%`;
+            }, 30);
+        }
+
+        function handleCastButton() {
+            if (gameState.phase !== 'cast') return;
+
+            // 泳がせ釣りおよびぶっこみ釣り両方で生きエサをチェック
+            if (gameState.rigMode === 'livebait' || gameState.rigMode === 'bottom') {
+                if (gameState.baitBucket.length === 0) {
+                    const modeName = gameState.rigMode === 'livebait' ? '泳がせ釣り' : 'ぶっこみ釣り';
+                    showHudMessage(`${modeName}用の生きエサ(アジ等)がありません！`, 1800);
+                    return;
+                }
+                const baitIdx = gameState.selectedBaitIndex < gameState.baitBucket.length ? gameState.selectedBaitIndex : 0;
+                const usedBait = gameState.baitBucket.splice(baitIdx, 1)[0];
+                gameState.selectedBaitIndex = 0;
+                updateBaitBucketDisplay();
+                showHudMessage(`${usedBait.name}を仕掛けにセットして投入！`, 1200);
+            }
+
+            clearInterval(gameState.powerInterval);
+
+            const rod = SHOP_ITEMS.rod.find(r => r.id === gameState.equipped.rod) || SHOP_ITEMS.rod[0];
+            const rodBonus = rod.castBonus || 1.0;
+            gameState.lureDistance = Math.floor((gameState.castPower * 0.8 + 25) * rodBonus);
+            gameState.lureDepth = gameState.rigMode === 'bottom' ? 14.0 : 3.5;
+
+            gameState.phase = 'underwater';
+            updateUIPhaseControls();
+            spawnFishCandidate();
+            scheduleAutoBiteTimer();
+        }
+
+        function scheduleAutoBiteTimer() {
+            clearTimeout(gameState.autoBiteTimeout);
+            clearTimeout(gameState.hookingTimeout);
+            if (gameState.rigMode === 'lure') return;
+
+            const randomDelay = Math.floor(Math.random() * 4500) + 3500;
+            gameState.autoBiteTimeout = setTimeout(() => {
+                if (gameState.phase === 'underwater' && gameState.activeFish) {
+                    triggerHookingPrompt();
+                }
+            }, randomDelay);
+        }
+
+        function triggerHookingPrompt() {
+            gameState.phase = 'hooking';
+            updateUIPhaseControls();
+
+            showHudMessage("アタリ到来！アワセを入れろ！", 2500);
+
+            clearTimeout(gameState.hookingTimeout);
+            gameState.hookingTimeout = setTimeout(() => {
+                if (gameState.phase === 'hooking') {
+                    showHudMessage("すっぽぬけた...！(アワセ失敗)", 1800);
+                    resetToCastPhase();
+                }
+            }, 3000);
+        }
+
+        function executeHooking() {
+            if (gameState.phase !== 'hooking' && gameState.phase !== 'underwater') return;
+
+            clearTimeout(gameState.hookingTimeout);
+            showHudMessage("フッキング成功！！", 1000);
+            triggerBite();
+        }
+
+        function spawnFishCandidate() {
+            const spot = SPOTS.find(s => s.id === gameState.currentLocationId) || SPOTS[0];
+            const candidateKeys = spot.fishList;
+            const chosenKey = candidateKeys[Math.floor(Math.random() * candidateKeys.length)];
+            const species = FISH_SPECIES[chosenKey] || FISH_SPECIES.aji;
+
+            const size = Math.floor(species.minSize + Math.random() * (species.maxSize - species.minSize));
+
+            // Determine Rank
+            let rank = 'C';
+            if (size > species.maxSize * 0.9) rank = 'SS (伝説級)';
+            else if (size > species.maxSize * 0.78) rank = 'S (ランカー)';
+            else if (size > species.maxSize * 0.6) rank = 'A';
+
+            gameState.activeFish = {
+                species: species,
+                size: size,
+                rank: rank,
+                distanceX: (Math.random() - 0.5) * 200 + 100,
+                distanceY: (Math.random() - 0.5) * 80,
+                interest: 20
+            };
+
+            const radar = document.getElementById('radar-status');
+            if (radar) radar.innerText = `${species.name}の魚影が接近中！`;
+            updateDistanceDisplay();
+        }
+
+        function evaluateFishReaction(action) {
+            if (!gameState.activeFish || !gameState.activeFish.species) return;
+
+            const fish = gameState.activeFish;
+            if (fish.species.preferredActions.includes(action)) {
+                fish.interest += 35;
+                showHudMessage("チェイス！！強烈反応！", 600);
+            } else {
+                fish.interest += 10;
+            }
+
+            if (fish.interest >= 75) {
+                if (gameState.rigMode === 'lure') {
+                    triggerBite();
+                } else {
+                    triggerHookingPrompt();
+                }
+            }
+        }
+
+        function triggerBite() {
+            gameState.phase = 'fight';
+            gameState.lineTension = 45;
+            gameState.fishHp = gameState.activeFish ? gameState.activeFish.species.stamina : 50;
+
+            showHudMessage("HIT!!!!!!", 1200);
+            updateUIPhaseControls();
+            startFightLoop();
+        }
+
+        let fightInterval = null;
+        function startFightLoop() {
+            clearInterval(fightInterval);
+            fightInterval = setInterval(() => {
+                if (gameState.phase !== 'fight' || !gameState.activeFish || !gameState.activeFish.species) {
+                    clearInterval(fightInterval);
+                    return;
+                }
+
+                const fish = gameState.activeFish;
+                const reelData = SHOP_ITEMS.reel.find(r => r.id === gameState.equipped.reel) || SHOP_ITEMS.reel[0];
+                const lineData = SHOP_ITEMS.line.find(l => l.id === gameState.equipped.line) || SHOP_ITEMS.line[0];
+
+                if (gameState.isReeling) {
+                    gameState.lineTension += (4 * gameState.dragSetting);
+                    gameState.fishHp -= (1.8 * (reelData.reelSpeed || 1.0));
+                    gameState.lureDistance = Math.max(0, gameState.lureDistance - 0.8);
+                } else {
+                    gameState.lineTension = Math.max(10, gameState.lineTension - 3);
+                    gameState.lineTension += (fish.species.pullPower * 0.05);
+                }
+
+                const tensionBar = document.getElementById('tension-bar');
+                const tensionVal = document.getElementById('tension-value');
+                if (tensionBar) tensionBar.style.width = `${Math.min(100, gameState.lineTension)}%`;
+                if (tensionVal) tensionVal.innerText = `${Math.floor(gameState.lineTension)}%`;
+
+                const hpPercent = Math.max(0, (gameState.fishHp / fish.species.stamina) * 100);
+                const hpBar = document.getElementById('fish-hp-bar');
+                const hpVal = document.getElementById('fish-hp-value');
+                if (hpBar) hpBar.style.width = `${hpPercent}%`;
+                if (hpVal) hpVal.innerText = `${Math.floor(hpPercent)}%`;
+
+                if (gameState.lineTension >= (lineData.tensionLimit / 2)) {
+                    showHudMessage("ラインブレイク！！(糸切れ)", 1500);
+                    resetToCastPhase();
+                    return;
+                }
+
+                if (gameState.fishHp <= 0 || gameState.lureDistance <= 2) {
+                    clearInterval(fightInterval);
+                    handleSuccessfulCatch();
+                }
+            }, 100);
+        }
+
+        function startReeling() { gameState.isReeling = true; }
+        function stopReeling() { gameState.isReeling = false; }
+
+        function adjustDrag() {
+            gameState.dragSetting = gameState.dragSetting === 1.0 ? 0.6 : (gameState.dragSetting === 0.6 ? 1.4 : 1.0);
+            showHudMessage(`ドラグ調整: ${gameState.dragSetting.toFixed(1)}x`, 800);
+        }
+
+        function showHudMessage(msg, duration = 1000) {
+            const el = document.getElementById('hud-message');
+            if (!el) return;
+            el.innerText = msg;
+            el.classList.remove('scale-0');
+            el.classList.add('scale-100');
+            setTimeout(() => {
+                el.classList.remove('scale-100');
+                el.classList.add('scale-0');
+            }, duration);
+        }
+
+        function updateDistanceDisplay() {
+            const el = document.getElementById('distance-display');
+            if (el) el.innerText = `水深: ${gameState.lureDepth.toFixed(1)}m | 距離: ${Math.floor(gameState.lureDistance)}m`;
+        }
+
+        function resetToCastPhase() {
+            clearInterval(fightInterval);
+            clearTimeout(gameState.autoBiteTimeout);
+            clearTimeout(gameState.hookingTimeout);
+            gameState.phase = 'cast';
+            gameState.activeFish = null;
+            updateUIPhaseControls();
+            startCastPowerMeter();
+            cycleEnvironment();
+            const radar = document.getElementById('radar-status');
+            if (radar) radar.innerText = '魚影を探しています...';
+        }
+
+        function cycleEnvironment() {
+            const times = ['morning', 'day', 'evening', 'night'];
+            const timeLabels = { morning: '朝マズメ', day: '日中', evening: '夕マズメ', night: '夜間' };
+            const weathers = ['sunny', 'cloudy', 'rain'];
+            const weatherLabels = { sunny: '晴れ', cloudy: '曇り', rain: '雨' };
+            const weatherIcons = { sunny: 'fa-sun text-amber-400', cloudy: 'fa-cloud text-slate-300', rain: 'fa-cloud-showers-heavy text-blue-400' };
+
+            // Advance time slowly
+            if (Math.random() > 0.6) {
+                const nextIdx = (times.indexOf(gameState.timeOfDay) + 1) % times.length;
+                gameState.timeOfDay = times[nextIdx];
+            }
+
+            if (Math.random() > 0.7) {
+                gameState.weather = weathers[Math.floor(Math.random() * weathers.length)];
+            }
+
+            const tEl = document.getElementById('time-text');
+            const wEl = document.getElementById('weather-text');
+            const iconEl = document.getElementById('weather-icon');
+
+            if (tEl) tEl.innerText = timeLabels[gameState.timeOfDay];
+            if (wEl) wEl.innerText = weatherLabels[gameState.weather];
+            if (iconEl) iconEl.className = `fa-solid ${weatherIcons[gameState.weather]}`;
+        }
+
+        function switchView(viewName) {
+            ['game', 'quests', 'aquarium', 'map', 'shop', 'tackle'].forEach(v => {
+                const el = document.getElementById(`view-${v}`);
+                const btn = document.getElementById(`btn-view-${v}`);
+                if (el) el.classList.add('hidden');
+                if (btn) btn.className = 'px-2.5 py-1 rounded-lg font-bold text-xs bg-slate-700 hover:bg-slate-600 text-white transition flex items-center gap-1';
+            });
+
+            const activeView = document.getElementById(`view-${viewName}`);
+            const activeBtn = document.getElementById(`btn-view-${viewName}`);
+            if (activeView) activeView.classList.remove('hidden');
+            if (activeBtn) activeBtn.className = 'px-2.5 py-1 rounded-lg font-bold text-xs bg-cyan-600 hover:bg-cyan-500 text-white transition flex items-center gap-1 shadow-lg shadow-cyan-900/50';
+
+            if (viewName === 'quests') renderQuestsUI();
+            if (viewName === 'aquarium') renderAquariumUI();
+            if (viewName === 'map') renderMapSpots();
+            if (viewName === 'shop') renderShopItems();
+            if (viewName === 'tackle') renderTackleBox();
+        }
+
+        function renderQuestsUI() {
+            const container = document.getElementById('quests-list-container');
+            if (!container) return;
+
+            container.innerHTML = gameState.quests.map(q => `
+                <div class="bg-slate-900 p-4 rounded-2xl border ${q.completed ? 'border-emerald-500/50 bg-slate-900/50' : 'border-slate-800'} flex justify-between items-center">
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h3 class="font-bold text-base text-slate-100">${q.title}</h3>
+                            ${q.completed ? '<span class="text-[10px] px-2 py-0.5 bg-emerald-600 text-white font-black rounded-full">達成完了</span>' : ''}
+                        </div>
+                        <p class="text-xs text-slate-400 mt-1">${q.desc}</p>
+                        <div class="text-xs text-amber-300 font-mono mt-1"><i class="fa-solid fa-gift"></i> 報酬: ¥${q.reward.toLocaleString()}</div>
+                    </div>
+                    <div>
+                        ${q.completed 
+                            ? `<button disabled class="px-4 py-2 bg-slate-800 text-slate-500 font-bold text-xs rounded-xl cursor-not-allowed">受取済</button>`
+                            : `<button onclick="claimQuestReward('${q.id}')" class="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs rounded-xl shadow transition">進捗確認 / 報酬受取</button>`
+                        }
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function claimQuestReward(questId) {
+            const q = gameState.quests.find(x => x.id === questId);
+            if (!q || q.completed) return;
+
+            let isSatisfied = false;
+
+            if (questId === 'q1' && gameState.totalFishCaughtCount >= q.target) isSatisfied = true;
+            if (questId === 'q2' && ((gameState.caughtFishCount['buri'] || 0) + (gameState.caughtFishCount['hiramasa'] || 0)) >= 1) isSatisfied = true;
+            if (questId === 'q3' && q.current >= q.target) isSatisfied = true;
+            if (questId === 'q4' && ((gameState.caughtFishCount['akame'] || 0) + (gameState.caughtFishCount['gt'] || 0) + (gameState.caughtFishCount['kue'] || 0)) >= 1) isSatisfied = true;
+
+            if (isSatisfied) {
+                q.completed = true;
+                gameState.money += q.reward;
+                updateMoneyDisplay();
+                renderQuestsUI();
+                showHudMessage(`任務達成！¥${q.reward.toLocaleString()}獲得！`, 1800);
+            } else {
+                showHudMessage("任務の条件をまだ満たしていません！", 1200);
+            }
+        }
+
+        function feedAquariumFish() {
+            if (gameState.aquarium.length === 0) {
+                showHudMessage("水族館に魚がいません！", 1000);
+                return;
+            }
+            if (gameState.money < 1000) {
+                showHudMessage("エサ代(¥1,000)が足りません！", 1200);
+                return;
+            }
+
+            gameState.money -= 1000;
+            updateMoneyDisplay();
+
+            gameState.aquarium.forEach(f => {
+                f.size += 2;
+                f.price = Math.floor(f.price * 1.15);
+            });
+
+            renderAquariumUI();
+            showHudMessage("エサを与えました！全魚のサイズと価値UP！", 1500);
+        }
+
+        function renderAquariumUI() {
+            const countEl = document.getElementById('aquarium-count');
+            const container = document.getElementById('aquarium-list-container');
+            if (countEl) countEl.innerText = gameState.aquarium.length;
+
+            if (!container) return;
+
+            if (gameState.aquarium.length === 0) {
+                container.innerHTML = `<div class="col-span-full text-center text-xs text-slate-500 py-4">現在、水族館で飼育中の魚はいません。</div>`;
+                return;
+            }
+
+            container.innerHTML = gameState.aquarium.map((fish, idx) => `
+                <div class="bg-slate-800 p-2.5 rounded-xl border border-slate-700 flex justify-between items-center text-xs">
+                    <div>
+                        <div class="font-bold text-slate-100">${fish.species.name}</div>
+                        <div class="text-[10px] text-amber-300 font-mono">${fish.size}cm [${fish.rank || 'B'}] (¥${fish.price.toLocaleString()})</div>
+                    </div>
+                    <button onclick="sellSingleAquariumFish(${idx})" class="px-2.5 py-1 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-lg transition text-[10px]">
+                        売却
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        function sellSingleAquariumFish(idx) {
+            if (idx < 0 || idx >= gameState.aquarium.length) return;
+            const sold = gameState.aquarium.splice(idx, 1)[0];
+            gameState.money += sold.price;
+            updateMoneyDisplay();
+            renderAquariumUI();
+            showHudMessage(`${sold.species.name}を売却しました！`, 1200);
+        }
+
+        function sellAllAquariumFish() {
+            if (gameState.aquarium.length === 0) {
+                showHudMessage("売却できる魚がいません！", 1000);
+                return;
+            }
+
+            let totalPrice = 0;
+            gameState.aquarium.forEach(f => totalPrice += f.price);
+            const totalCount = gameState.aquarium.length;
+            gameState.aquarium = [];
+            gameState.money += totalPrice;
+
+            updateMoneyDisplay();
+            renderAquariumUI();
+            showHudMessage(`水族館の魚${totalCount}匹を一括売却！(¥${totalPrice.toLocaleString()})`, 1800);
+        }
+
+        function renderMapSpots() {
+            const grid = document.getElementById('map-spots-grid');
+            if (!grid) return;
+            grid.innerHTML = SPOTS.map(spot => `
+                <div class="bg-slate-900 p-5 rounded-2xl border ${spot.id === gameState.currentLocationId ? 'border-cyan-400 bg-slate-800/80' : 'border-slate-800'} space-y-3">
+                    <div class="flex justify-between items-start">
+                        <h3 class="text-lg font-black text-white flex items-center gap-2">
+                            <i class="fa-solid ${spot.icon} text-cyan-400"></i> ${spot.name}
+                        </h3>
+                        <span class="text-xs font-mono font-bold text-amber-400">${spot.difficulty}</span>
+                    </div>
+                    <p class="text-xs text-slate-400 leading-relaxed">${spot.subtitle}</p>
+                    <button onclick="selectSpot('${spot.id}')" class="w-full py-2.5 rounded-xl font-bold text-xs ${spot.id === gameState.currentLocationId ? 'bg-emerald-600 text-white' : 'bg-cyan-600 hover:bg-cyan-500 text-white'} transition">
+                        ${spot.id === gameState.currentLocationId ? '選択中のポイント' : 'このポイントへ移動'}
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        function selectSpot(spotId) {
+            gameState.currentLocationId = spotId;
+            const spot = SPOTS.find(s => s.id === spotId);
+            const textEl = document.getElementById('current-location-text');
+            if (textEl && spot) textEl.innerText = `現在のポイント: ${spot.name}`;
+            resetToCastPhase();
+            switchView('game');
+        }
+
+        function renderShopItems() {
+            const grid = document.getElementById('shop-items-grid');
+            if (!grid) return;
+            const items = SHOP_ITEMS[shopCategoryFilter] || [];
+
+            grid.innerHTML = items.map(item => {
+                const isOwned = gameState.inventory[`${shopCategoryFilter}s`]?.includes(item.id);
+                const isEquipped = gameState.equipped[shopCategoryFilter] === item.id;
+
+                return `
+                    <div class="bg-slate-900 p-4 rounded-2xl border border-slate-800 space-y-2 flex flex-col justify-between">
+                        <div>
+                            <div class="flex justify-between font-bold text-sm text-slate-200">
+                                <span>${item.name}</span>
+                                <span class="text-amber-400 font-mono">¥${item.price.toLocaleString()}</span>
+                            </div>
+                            <p class="text-xs text-slate-400 mt-1">${item.desc}</p>
+                        </div>
+                        <button onclick="buyOrEquipItem('${shopCategoryFilter}', '${item.id}', ${item.price})" class="mt-3 w-full py-2 rounded-xl text-xs font-bold ${isEquipped ? 'bg-emerald-600 text-white' : (isOwned ? 'bg-cyan-600 hover:bg-cyan-500 text-white' : 'bg-amber-600 hover:bg-amber-500 text-white')} transition">
+                            ${isEquipped ? '装備中' : (isOwned ? '装備する' : '購入する')}
+                        </button>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function filterShopCategory(cat) {
+            shopCategoryFilter = cat;
+            ['lure', 'rod', 'reel', 'line'].forEach(c => {
+                const tab = document.getElementById(`tab-shop-${c}`);
+                if (tab) tab.className = c === cat ? 'shop-tab active px-4 py-2 rounded-xl text-xs font-bold bg-amber-600 text-white' : 'shop-tab px-4 py-2 rounded-xl text-xs font-bold bg-slate-800 text-slate-300';
+            });
+            renderShopItems();
+        }
+
+        function buyOrEquipItem(type, itemId, price) {
+            const inventoryList = gameState.inventory[`${type}s`];
+            if (!inventoryList.includes(itemId)) {
+                if (gameState.money < price) {
+                    showHudMessage("所持金が足りません！", 1200);
+                    return;
+                }
+                gameState.money -= price;
+                inventoryList.push(itemId);
+                updateMoneyDisplay();
+            }
+
+            gameState.equipped[type] = itemId;
+            updateTackleSummary();
+            renderShopItems();
+        }
+
+        function renderTackleBox() {
+            const list = document.getElementById('equipped-items-list');
+            if (list) {
+                list.innerHTML = Object.keys(gameState.equipped).map(type => {
+                    const item = SHOP_ITEMS[type].find(i => i.id === gameState.equipped[type]);
+                    return `<div class="text-xs bg-slate-800 p-2.5 rounded-xl border border-slate-700 flex justify-between"><span class="text-slate-400 capitalize">${type}:</span><span class="font-bold text-amber-300">${item ? item.name : ''}</span></div>`;
+                }).join('');
+            }
+
+            const bookGrid = document.getElementById('fish-book-grid');
+            if (bookGrid) {
+                const totalSpecies = Object.keys(FISH_SPECIES).length;
+                const caughtCount = Object.keys(gameState.caughtFishCount).length;
+                const countStatus = document.getElementById('fish-count-status');
+                if (countStatus) countStatus.innerText = `${caughtCount} / ${totalSpecies} 種達成`;
+
+                bookGrid.innerHTML = Object.values(FISH_SPECIES).map(fish => {
+                    const caught = gameState.caughtFishCount[fish.id] || 0;
+                    const maxSize = gameState.caughtFishMaxSize[fish.id] || 0;
+
+                    return `
+                        <div class="bg-slate-800/80 p-3 rounded-xl border ${caught > 0 ? 'border-cyan-500/50' : 'border-slate-700 opacity-60'} text-center space-y-1">
+                            <div class="text-2xl" style="color: ${caught > 0 ? fish.color : '#64748b'}"><i class="fa-solid fa-fish"></i></div>
+                            <div class="text-xs font-bold ${caught > 0 ? 'text-white' : 'text-slate-500'}">${caught > 0 ? fish.name : '？？？？'}</div>
+                            <div class="text-[10px] text-slate-400">${caught > 0 ? `最大: ${maxSize}cm (${caught}匹)` : '未遭遇'}</div>
+                        </div>
+                    `;
+                }).join('');
+            }
+        }
+
+        function updateMoneyDisplay() {
+            const el = document.getElementById('money-display');
+            const elMobile = document.getElementById('money-display-mobile');
+            const formatted = `¥${gameState.money.toLocaleString()}`;
+            if (el) el.innerText = formatted;
+            if (elMobile) elMobile.innerText = formatted;
+        }
+
+        function closeCatchModal() {
+            document.getElementById('modal-catch').classList.add('hidden');
+            resetToCastPhase();
+        }
+
+        function updateTackleSummary() {
+            const tackleEl = document.getElementById('current-tackle-summary');
+            const lureEl = document.getElementById('current-lure-summary');
+
+            const rod = SHOP_ITEMS.rod.find(r => r.id === gameState.equipped.rod);
+            const reel = SHOP_ITEMS.reel.find(r => r.id === gameState.equipped.reel);
+            const lure = SHOP_ITEMS.lure.find(l => l.id === gameState.equipped.lure);
+
+            if (tackleEl) {
+                tackleEl.innerText = `ロッド: ${rod ? rod.name : '未装備'} | リール: ${reel ? reel.name : '未装備'}`;
+            }
+
+            if (lureEl) {
+                let rigName = 'ルアー';
+                if (gameState.rigMode === 'livebait') rigName = '泳がせ釣り仕掛け';
+                if (gameState.rigMode === 'bottom') rigName = 'ぶっこみ底釣り仕掛け';
+
+                if (gameState.rigMode === 'lure') {
+                    lureEl.innerText = `釣法: ${rigName} (${lure ? lure.name : '標準ルアー'})`;
+                } else {
+                    const selectedBait = gameState.baitBucket[gameState.selectedBaitIndex];
+                    const baitName = selectedBait ? selectedBait.name : '生きエサ未選択';
+                    lureEl.innerText = `釣法: ${rigName} (エサ: ${baitName})`;
+                }
+            }
+        }
+
+        function updateBaitBucketDisplay() {
+            const bucketEl = document.getElementById('bait-bucket-display');
+            if (bucketEl) {
+                bucketEl.innerText = `エサ: ${gameState.baitBucket.length}匹`;
+            }
+        }
+
+        function openBaitBucketModal() {
+            const modal = document.getElementById('modal-bait-bucket');
+            const container = document.getElementById('bait-list-container');
+            if (!modal || !container) return;
+
+            if (gameState.baitBucket.length === 0) {
+                container.innerHTML = `<div class="p-4 text-center text-xs text-slate-500 bg-slate-800/50 rounded-xl">エサバケツは空っぽです。<br>マアジやカサゴを釣ってキープしましょう！</div>`;
+            } else {
+                container.innerHTML = gameState.baitBucket.map((bait, idx) => `
+                    <div class="p-3 rounded-xl border ${gameState.selectedBaitIndex === idx ? 'border-emerald-400 bg-emerald-950/40' : 'border-slate-700 bg-slate-800'} flex justify-between items-center">
+                        <div class="text-left">
+                            <div class="font-bold text-sm text-slate-200">${bait.name}</div>
+                            <div class="text-[10px] text-emerald-400">サイズ: ${bait.size} cm</div>
+                        </div>
+                        <button onclick="selectBaitFromBucket(${idx})" class="px-3 py-1.5 rounded-lg text-xs font-bold ${gameState.selectedBaitIndex === idx ? 'bg-emerald-600 text-white' : 'bg-slate-700 hover:bg-slate-600 text-slate-200'} transition">
+                            ${gameState.selectedBaitIndex === idx ? 'セット中' : '選択'}
+                        </button>
+                    </div>
+                `).join('');
+            }
+
+            modal.classList.remove('hidden');
+        }
+
+        function closeBaitBucketModal() {
+            const modal = document.getElementById('modal-bait-bucket');
+            if (modal) modal.classList.add('hidden');
+        }
+
+        function selectBaitFromBucket(idx) {
+            gameState.selectedBaitIndex = idx;
+            openBaitBucketModal();
+            updateTackleSummary();
+            showHudMessage(`${gameState.baitBucket[idx].name}を仕掛けエサにセット！`, 800);
+        }
+
+        function selectRigMode(mode) {
+            if (gameState.phase !== 'cast') return;
+
+            gameState.rigMode = mode;
+            ['lure', 'livebait', 'bottom'].forEach(m => {
+                const btn = document.getElementById(`btn-rig-${m}`);
+                if (btn) {
+                    btn.className = m === mode 
+                        ? 'px-3 py-1 rounded-lg text-xs font-bold bg-cyan-600 text-white shadow'
+                        : 'px-3 py-1 rounded-lg text-xs font-bold bg-slate-800 text-slate-300 hover:bg-slate-700';
+                }
+            });
+
+            const titleEl = document.getElementById('cast-mode-title');
+            if (titleEl) {
+                if (mode === 'lure') titleEl.innerText = 'キャストモード (ルアー)';
+                else if (mode === 'livebait') titleEl.innerText = 'キャストモード (泳がせ釣り)';
+                else if (mode === 'bottom') titleEl.innerText = 'キャストモード (ぶっこみ釣り)';
+            }
+
+            if ((mode === 'livebait' || mode === 'bottom') && gameState.baitBucket.length > 0) {
+                openBaitBucketModal();
+            }
+
+            updateTackleSummary();
+            updateUIPhaseControls();
+        }
+
+        function updateUIPhaseControls() {
+            const castControls = document.getElementById('controls-cast');
+            const underwaterControls = document.getElementById('controls-underwater');
+            const fightControls = document.getElementById('controls-fight');
+            const fightHud = document.getElementById('fight-hud');
+            const hookingHud = document.getElementById('hooking-hud');
+            const rigBtnContainer = document.getElementById('rig-mode-buttons-container');
+
+            if (castControls) castControls.classList.add('hidden');
+            if (underwaterControls) underwaterControls.classList.add('hidden');
+            if (fightControls) fightControls.classList.add('hidden');
+            if (fightHud) fightHud.classList.add('hidden');
+            if (hookingHud) hookingHud.classList.add('hidden');
+
+            if (rigBtnContainer) {
+                const buttons = rigBtnContainer.querySelectorAll('button');
+                buttons.forEach(btn => {
+                    if (gameState.phase === 'cast') {
+                        btn.removeAttribute('disabled');
+                        btn.classList.remove('opacity-40', 'cursor-not-allowed');
+                    } else {
+                        btn.setAttribute('disabled', 'true');
+                        btn.classList.add('opacity-40', 'cursor-not-allowed');
+                    }
+                });
+            }
+
+            if (gameState.phase === 'cast') {
+                if (castControls) castControls.classList.remove('hidden');
+            } else if (gameState.phase === 'underwater') {
+                if (underwaterControls) {
+                    underwaterControls.classList.remove('hidden');
+                    renderUnderwaterButtons();
+                }
+            } else if (gameState.phase === 'hooking') {
+                if (hookingHud) hookingHud.classList.remove('hidden');
+            } else if (gameState.phase === 'fight') {
+                if (fightControls) fightControls.classList.remove('hidden');
+                if (fightHud) fightHud.classList.remove('hidden');
+            }
+        }
+
+        function renderUnderwaterButtons() {
+            const container = document.getElementById('controls-underwater');
+            if (!container) return;
+
+            if (gameState.rigMode === 'lure') {
+                container.innerHTML = `
+                    <button onclick="performAction('twitch')" class="py-2.5 bg-cyan-800 hover:bg-cyan-700 text-white font-bold text-xs rounded-xl shadow border border-cyan-500/30"><i class="fa-solid fa-bolt"></i> トゥイッチ</button>
+                    <button onclick="performAction('jerk')" class="py-2.5 bg-cyan-800 hover:bg-cyan-700 text-white font-bold text-xs rounded-xl shadow border border-cyan-500/30"><i class="fa-solid fa-water-ladder"></i> ジャーク</button>
+                    <button onclick="performAction('reel')" class="py-2.5 bg-emerald-800 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow border border-emerald-500/30"><i class="fa-solid fa-rotate-right"></i> タダ巻き</button>
+                    <button onclick="performAction('stop')" class="py-2.5 bg-amber-800 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow border border-amber-500/30"><i class="fa-solid fa-pause"></i> フォール(停止)</button>
+                `;
+            } else if (gameState.rigMode === 'livebait') {
+                container.innerHTML = `
+                    <button onclick="performAction('live_swim')" class="py-2.5 bg-emerald-800 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow border border-emerald-500/30"><i class="fa-solid fa-fish"></i> 泳がせる</button>
+                    <button onclick="performAction('twitch')" class="py-2.5 bg-cyan-800 hover:bg-cyan-700 text-white font-bold text-xs rounded-xl shadow border border-cyan-500/30"><i class="fa-solid fa-hand-pointer"></i> 竿をあおる</button>
+                    <button onclick="performAction('stop')" class="py-2.5 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs rounded-xl shadow border border-slate-500/30"><i class="fa-solid fa-clock"></i> じっと待つ</button>
+                    <button onclick="performAction('reel')" class="py-2.5 bg-amber-800 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow border border-amber-500/30"><i class="fa-solid fa-rotate-right"></i> 少し寄せる</button>
+                `;
+            } else {
+                container.innerHTML = `
+                    <button onclick="performAction('bottom_wait')" class="py-2.5 bg-amber-900 hover:bg-amber-800 text-white font-bold text-xs rounded-xl shadow border border-amber-500/30"><i class="fa-solid fa-anchor"></i> 底で待機</button>
+                    <button onclick="performAction('jerk')" class="py-2.5 bg-amber-800 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow border border-amber-500/30"><i class="fa-solid fa-angles-up"></i> 底を小突く</button>
+                    <button onclick="performAction('reel')" class="py-2.5 bg-emerald-800 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow border border-emerald-500/30"><i class="fa-solid fa-rotate-right"></i> 底を引きずる</button>
+                    <button onclick="performAction('stop')" class="py-2.5 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs rounded-xl shadow border border-slate-500/30"><i class="fa-solid fa-pause"></i> 放置</button>
+                `;
+            }
+        }
+
+        function performAction(actionName) {
+            if (gameState.phase !== 'underwater') return;
+
+            gameState.lureAction = actionName;
+            
+            const badge = document.getElementById('action-badge');
+            if (badge) {
+                badge.classList.remove('hidden');
+                badge.innerText = `アクション: ${getActionLabel(actionName)}`;
+                setTimeout(() => badge.classList.add('hidden'), 800);
+            }
+
+            if (actionName === 'twitch') {
+                gameState.actionOffsetX = (Math.random() - 0.5) * 40;
+                gameState.actionOffsetY = -15;
+            } else if (actionName === 'jerk') {
+                gameState.actionOffsetX = -25;
+                gameState.actionOffsetY = -30;
+            } else if (actionName === 'reel') {
+                gameState.lureDistance = Math.max(0, gameState.lureDistance - 3);
+            } else if (actionName === 'stop') {
+                gameState.lureDepth = Math.min(18, gameState.lureDepth + 1.2);
+            }
+
+            updateDistanceDisplay();
+            evaluateFishReaction(actionName);
+        }
+
+        function getActionLabel(action) {
+            const labels = {
+                twitch: 'トゥイッチ！',
+                jerk: '強烈ジャーク！',
+                reel: 'リール巻き寄せ！',
+                stop: 'フォール / 停止',
+                live_swim: '生きエサが泳ぐ！',
+                bottom_wait: '底でアピール！'
+            };
+            return labels[action] || action;
+        }
+
+        function handleSuccessfulCatch() {
+            if (!gameState.activeFish || !gameState.activeFish.species) return;
+
+            const fish = gameState.activeFish;
+            const species = fish.species;
+            const size = fish.size;
+
+            let priceMultiplier = 1.0;
+            if (fish.rank === 'SS (伝説級)') priceMultiplier = 2.0;
+            else if (fish.rank === 'S (ランカー)') priceMultiplier = 1.5;
+
+            const sizeRatio = size / species.minSize;
+            const price = Math.floor(species.basePrice * Math.pow(sizeRatio, 1.5) * priceMultiplier);
+
+            fish.calculatedPrice = price;
+
+            gameState.totalFishCaughtCount++;
+            gameState.caughtFishCount[species.id] = (gameState.caughtFishCount[species.id] || 0) + 1;
+            gameState.caughtFishMaxSize[species.id] = Math.max(gameState.caughtFishMaxSize[species.id] || 0, size);
+
+            // Update quest status
+            if (gameState.rigMode === 'livebait') {
+                const q3 = gameState.quests.find(q => q.id === 'q3');
+                if (q3) q3.current++;
+            }
+
+            const headerEl = document.getElementById('modal-catch-header');
+            const nameEl = document.getElementById('modal-fish-name');
+            const descEl = document.getElementById('modal-fish-desc');
+            const sizeEl = document.getElementById('modal-fish-size');
+            const priceEl = document.getElementById('modal-fish-price');
+
+            if (headerEl) headerEl.innerHTML = `<i class="fa-solid fa-trophy"></i> CATCH!! [${fish.rank}]`;
+            if (nameEl) nameEl.innerText = `${species.name}`;
+            if (descEl) descEl.innerText = species.desc;
+            if (sizeEl) sizeEl.innerText = `${size} cm (${fish.rank})`;
+            if (priceEl) priceEl.innerText = `¥${price.toLocaleString()}`;
+
+            const baitOpt = document.getElementById('modal-bait-option');
+            if (baitOpt) {
+                if (species.isBait) {
+                    baitOpt.classList.remove('hidden');
+                } else {
+                    baitOpt.classList.add('hidden');
+                }
+            }
+
+            const modal = document.getElementById('modal-catch');
+            if (modal) modal.classList.remove('hidden');
+        }
+
+        function confirmCatchAction(action) {
+            if (!gameState.activeFish || !gameState.activeFish.species) return;
+
+            const fish = gameState.activeFish;
+            const price = fish.calculatedPrice || fish.species.basePrice;
+
+            if (action === 'sell') {
+                gameState.money += price;
+                updateMoneyDisplay();
+                showHudMessage(`¥${price.toLocaleString()}で売却しました！`, 1200);
+            } else if (action === 'aquarium') {
+                gameState.aquarium.push({
+                    species: fish.species,
+                    size: fish.size,
+                    rank: fish.rank,
+                    price: price
+                });
+                showHudMessage("マイ水族館へ送りました！", 1200);
+            } else if (action === 'bait') {
+                gameState.baitBucket.push({
+                    id: fish.species.id,
+                    name: fish.species.name,
+                    size: fish.size
+                });
+                updateBaitBucketDisplay();
+                showHudMessage("エサバケツにキープしました！", 1200);
+            }
+
+            closeCatchModal();
+        }
+
+        window.onload = function() {
+            initCanvas();
+            renderGameCanvas();
+            startCastPowerMeter();
+            updateTackleSummary();
+            updateBaitBucketDisplay();
+            updateMoneyDisplay();
+            selectRigMode('lure');
+        };
+    </script>
+</body>
+</html>

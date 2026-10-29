@@ -1,0 +1,1562 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Slime Breakout - HABBY Style Game</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=MPLUSRounded1c:wght@700;800;900&display=swap" rel="stylesheet">
+    <style>
+        * {
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+        }
+        body {
+            font-family: 'MPLUSRounded1c', 'Fredoka One', sans-serif;
+            background-color: #1a1c23;
+            overflow: hidden;
+        }
+        /* Custom UI Shadows & Gradients typical of HABBY games */
+        .habby-card {
+            background: linear-gradient(135deg, #2b2e3b 0%, #1e2029 100%);
+            border: 4px solid #3d4255;
+            box-shadow: 0 8px 0 #121318;
+        }
+        .habby-btn-green {
+            background: linear-gradient(180deg, #5cda36 0%, #34a814 100%);
+            border-bottom: 6px solid #206d0a;
+            box-shadow: 0 4px 10px rgba(76, 217, 100, 0.4);
+        }
+        .habby-btn-green:active {
+            transform: translateY(4px);
+            border-bottom-width: 2px;
+            box-shadow: none;
+        }
+        .habby-btn-orange {
+            background: linear-gradient(180deg, #ff9f43 0%, #ee5253 100%);
+            border-bottom: 6px solid #b81e1e;
+            box-shadow: 0 4px 10px rgba(255, 107, 107, 0.4);
+        }
+        .habby-btn-orange:active {
+            transform: translateY(4px);
+            border-bottom-width: 2px;
+        }
+        .habby-btn-purple {
+            background: linear-gradient(180deg, #a855f7 0%, #7e22ce 100%);
+            border-bottom: 6px solid #581c87;
+            box-shadow: 0 4px 10px rgba(168, 85, 247, 0.4);
+        }
+        .habby-btn-purple:active {
+            transform: translateY(4px);
+            border-bottom-width: 2px;
+        }
+        .text-stroke {
+            -webkit-text-stroke: 1.5px #111;
+        }
+        .text-stroke-thick {
+            -webkit-text-stroke: 3px #000;
+        }
+        /* Rarity Borders */
+        .rarity-common { border-color: #9ca3af; background: linear-gradient(135deg, #374151, #1f2937); }
+        .rarity-rare { border-color: #60a5fa; background: linear-gradient(135deg, #1e3a8a, #1e1b4b); }
+        .rarity-epic { border-color: #c084fc; background: linear-gradient(135deg, #581c87, #311042); }
+        .rarity-legendary { border-color: #fbbf24; background: linear-gradient(135deg, #78350f, #451a03); }
+        
+        .skill-card {
+            transition: all 0.2s ease;
+        }
+        .skill-card:hover {
+            transform: translateY(-5px) scale(1.02);
+        }
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen text-white">
+
+    <!-- Game Container -->
+    <div id="game-container" class="relative w-full max-w-md h-screen max-h-[850px] bg-slate-900 overflow-hidden shadow-2xl md:rounded-3xl border-0 md:border-8 border-slate-700 flex flex-col">
+
+        <!-- Top HUD (Playing) -->
+        <div id="hud" class="absolute top-0 left-0 w-full p-4 z-10 pointer-events-none flex flex-col gap-2">
+            <!-- Level & EXP Bar -->
+            <div class="flex items-center gap-2">
+                <div class="bg-yellow-500 text-slate-900 font-black px-3 py-1 rounded-full text-sm border-2 border-yellow-300 shadow shadow-yellow-500/50 flex items-center gap-1">
+                    <i class="fa-solid fa-star"></i>
+                    <span>LV.<span id="level-display">1</span></span>
+                </div>
+                <div class="flex-1 bg-slate-800/80 rounded-full h-5 p-1 border border-slate-600 backdrop-blur-sm relative overflow-hidden">
+                    <div id="exp-bar" class="bg-gradient-to-r from-yellow-400 to-amber-500 h-full rounded-full transition-all duration-300 w-0"></div>
+                </div>
+                <div class="bg-slate-800/80 text-amber-400 font-black px-3 py-1 rounded-full text-sm border border-slate-600 flex items-center gap-1">
+                    <i class="fa-solid fa-coins"></i>
+                    <span id="game-coins-display">0</span>
+                </div>
+            </div>
+
+            <!-- Stats Header -->
+            <div class="flex justify-between items-center text-xs font-bold tracking-wider px-1">
+                <div class="bg-slate-800/80 px-3 py-1.5 rounded-xl border border-slate-700/80 flex items-center gap-2">
+                    <span class="text-red-400"><i class="fa-solid fa-skull"></i> 撃破:</span>
+                    <span id="kill-count" class="text-white text-sm">0</span>
+                </div>
+                <div class="bg-slate-800/80 px-3 py-1.5 rounded-xl border border-slate-700/80 flex items-center gap-2">
+                    <span class="text-amber-400"><i class="fa-solid fa-crown"></i> ボス:</span>
+                    <span id="boss-display" class="text-white text-sm">0/3</span>
+                </div>
+                <div class="bg-slate-800/80 px-3 py-1.5 rounded-xl border border-slate-700/80 flex items-center gap-2">
+                    <span class="text-emerald-400"><i class="fa-solid fa-stopwatch"></i> TIME:</span>
+                    <span id="time-display" class="text-white text-sm">00:00</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Canvas -->
+        <canvas id="gameCanvas" class="w-full h-full bg-slate-950 cursor-crosshair"></canvas>
+
+        <!-- Joystick Overlay Hint for Mobile -->
+        <div id="joystick-hint" class="absolute bottom-10 left-1/2 -translate-x-1/2 text-center pointer-events-none transition-opacity duration-500 opacity-70">
+            <div class="w-16 h-16 rounded-full border-2 border-dashed border-white/40 mx-auto flex items-center justify-center animate-pulse">
+                <i class="fa-solid fa-hand-pointer text-white/60 text-xl"></i>
+            </div>
+            <p class="text-xs text-white/70 mt-2 font-bold tracking-wider">画面をドラッグして移動</p>
+        </div>
+
+        <!-- Start Screen (Lobby / Menu) -->
+        <div id="start-screen" class="absolute inset-0 z-30 bg-slate-950/95 backdrop-blur-md flex flex-col justify-between p-5 overflow-y-auto">
+            
+            <!-- Top Lobby Currency -->
+            <div class="flex justify-between items-center bg-slate-900/90 p-3 rounded-2xl border border-slate-800">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-gem text-cyan-400"></i>
+                    <span class="font-black text-sm">SLIME HERO</span>
+                </div>
+                <div class="flex items-center gap-2 bg-slate-800 px-3 py-1 rounded-full border border-amber-500/40">
+                    <i class="fa-solid fa-coins text-amber-400 text-base"></i>
+                    <span id="total-coins-display" class="font-black text-amber-300 text-sm">100</span>
+                </div>
+            </div>
+
+            <!-- Tab Content: Home / Equipment / Gacha -->
+            <div class="my-auto py-4 flex flex-col gap-4">
+                
+                <!-- HOME TAB -->
+                <div id="tab-home-content" class="flex flex-col items-center">
+                    <div class="inline-block px-4 py-1 bg-gradient-to-r from-amber-500 to-red-500 text-xs font-black rounded-full uppercase tracking-widest mb-2 text-white shadow-lg">HABBY Style Action RPG</div>
+                    <h1 class="text-3xl font-black text-center text-transparent bg-clip-text bg-gradient-to-b from-green-300 via-emerald-400 to-green-600 tracking-wider text-stroke">
+                        SLIME<br>BREAKOUT
+                    </h1>
+
+                    <!-- Stage Selector -->
+                    <div class="w-full mt-3 mb-1">
+                        <div class="text-xs font-bold text-slate-400 text-center mb-1"><i class="fa-solid fa-map-location-dot text-amber-400 mr-1"></i>ステージ選択</div>
+                        <div class="grid grid-cols-3 gap-2">
+                            <button id="stage-btn-1" onclick="selectStage(1)" class="p-2 rounded-xl border-2 border-emerald-500 bg-emerald-950/60 text-center transition-all">
+                                <div class="text-lg">🌿</div>
+                                <div class="text-[10px] font-black text-emerald-300">1. 草原</div>
+                            </button>
+                            <button id="stage-btn-2" onclick="selectStage(2)" class="p-2 rounded-xl border-2 border-slate-800 bg-slate-900/60 text-center transition-all opacity-70">
+                                <div class="text-lg">🌋</div>
+                                <div class="text-[10px] font-black text-slate-400">2. 洞窟</div>
+                            </button>
+                            <button id="stage-btn-3" onclick="selectStage(3)" class="p-2 rounded-xl border-2 border-slate-800 bg-slate-900/60 text-center transition-all opacity-70">
+                                <div class="text-lg">🏰</div>
+                                <div class="text-[10px] font-black text-slate-400">3. 魔城</div>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Slime Preview (Normal Classic Slime) -->
+                    <div class="relative my-4">
+                        <div class="w-24 h-24 bg-gradient-to-tr from-emerald-600 to-emerald-400 rounded-full flex items-center justify-center shadow-xl shadow-emerald-900/40 border-4 border-emerald-500 animate-pulse">
+                            <div class="relative w-full h-full flex items-center justify-center">
+                                <!-- イキイキした表情 preview -->
+                                <div class="absolute top-8 left-6 w-3.5 h-3.5 bg-slate-900 rounded-full flex items-start justify-end p-[1px]">
+                                    <div class="w-1.5 h-1.5 bg-white rounded-full"></div>
+                                </div>
+                                <div class="absolute top-8 right-6 w-3.5 h-3.5 bg-slate-900 rounded-full flex items-start justify-end p-[1px]">
+                                    <div class="w-1.5 h-1.5 bg-white rounded-full"></div>
+                                </div>
+                                <!-- ニヤリとした元気な口 -->
+                                <div class="absolute top-12 w-4 h-2 border-b-2 border-slate-900 rounded-b-full"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Current Equipped Summary -->
+                    <div class="w-full flex justify-center gap-4 mb-3">
+                        <div id="home-weapon-slot" class="w-14 h-14 rounded-2xl border-2 flex flex-col items-center justify-center bg-slate-800 border-slate-700">
+                            <i class="fa-solid fa-wand-magic-sparkles text-slate-500 text-xl"></i>
+                        </div>
+                        <div id="home-armor-slot" class="w-14 h-14 rounded-2xl border-2 flex flex-col items-center justify-center bg-slate-800 border-slate-700">
+                            <i class="fa-solid fa-shield-halved text-slate-500 text-xl"></i>
+                        </div>
+                    </div>
+
+                    <button id="start-btn" class="w-full py-3.5 rounded-2xl habby-btn-green text-xl font-black tracking-wider text-white uppercase text-stroke">
+                        バトル開始 <i class="fa-solid fa-play ml-2"></i>
+                    </button>
+                </div>
+
+                <!-- EQUIPMENT TAB -->
+                <div id="tab-equip-content" class="hidden flex flex-col gap-3">
+                    <h2 class="text-xl font-black text-center text-amber-400 text-stroke">装備・ステータス</h2>
+                    
+                    <!-- Equipped Cards -->
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="habby-card p-3 rounded-2xl flex flex-col items-center">
+                            <span class="text-xs text-slate-400 font-bold mb-2">武器 (攻撃力)</span>
+                            <div id="equipped-weapon-card" class="w-16 h-16 rounded-xl border-2 rarity-common flex items-center justify-center text-2xl mb-2">
+                                🗡️
+                            </div>
+                            <span id="equipped-weapon-name" class="text-xs font-black">初期の杖</span>
+                            <span id="equipped-weapon-stat" class="text-xs text-emerald-400 font-bold mt-0.5">ATK +10</span>
+                        </div>
+                        <div class="habby-card p-3 rounded-2xl flex flex-col items-center">
+                            <span class="text-xs text-slate-400 font-bold mb-2">防具 (最大HP)</span>
+                            <div id="equipped-armor-card" class="w-16 h-16 rounded-xl border-2 rarity-common flex items-center justify-center text-2xl mb-2">
+                                🛡️
+                            </div>
+                            <span id="equipped-armor-name" class="text-xs font-black">布の服</span>
+                            <span id="equipped-armor-stat" class="text-xs text-emerald-400 font-bold mt-0.5">HP +20</span>
+                        </div>
+                    </div>
+
+                    <!-- Inventory Header -->
+                    <div class="text-xs font-bold text-slate-400 mt-2">所持装備一覧</div>
+                    <div id="inventory-list" class="grid grid-cols-4 gap-2 max-h-48 overflow-y-auto p-1 bg-slate-900/60 rounded-xl border border-slate-800">
+                        <!-- Dynamic Inventory Items -->
+                    </div>
+                </div>
+
+                <!-- GACHA TAB -->
+                <div id="tab-gacha-content" class="hidden flex flex-col items-center text-center gap-4">
+                    <h2 class="text-xl font-black text-amber-400 text-stroke">装備宝箱ガチャ</h2>
+                    
+                    <div class="relative my-2">
+                        <div class="w-32 h-32 rounded-3xl bg-gradient-to-tr from-amber-600 to-yellow-400 flex items-center justify-center text-6xl shadow-xl shadow-amber-500/20 border-4 border-yellow-200 animate-pulse">
+                            🎁
+                        </div>
+                    </div>
+
+                    <p class="text-xs text-slate-300">レアリティ高の強力な武器や防具を手に入れて<br>スライムを大幅パワーアップ！</p>
+
+                    <div class="w-full flex gap-3">
+                        <button id="gacha-open-btn" class="flex-1 py-3 rounded-2xl habby-btn-orange font-black text-lg text-white flex items-center justify-center gap-2">
+                            <span>ガチャを引く</span>
+                            <span class="bg-black/30 px-2 py-0.5 rounded-full text-sm text-amber-300 flex items-center gap-1">
+                                <i class="fa-solid fa-coins"></i> 50
+                            </span>
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Bottom Navigation Tabs -->
+            <div class="flex justify-around bg-slate-900 border-t-2 border-slate-800 py-2 -mx-5 -mb-5 px-5">
+                <button id="nav-home" class="flex flex-col items-center gap-1 text-emerald-400 font-bold text-xs">
+                    <i class="fa-solid fa-house text-lg"></i>
+                    <span>バトル</span>
+                </button>
+                <button id="nav-equip" class="flex flex-col items-center gap-1 text-slate-500 font-bold text-xs">
+                    <i class="fa-solid fa-shield-cat text-lg"></i>
+                    <span>装備</span>
+                </button>
+                <button id="nav-gacha" class="flex flex-col items-center gap-1 text-slate-500 font-bold text-xs">
+                    <i class="fa-solid fa-box-open text-lg"></i>
+                    <span>ガチャ</span>
+                </button>
+            </div>
+
+        </div>
+
+        <!-- Gacha Result Modal -->
+        <div id="gacha-modal" class="absolute inset-0 z-50 bg-slate-950/90 backdrop-blur-md hidden flex flex-col items-center justify-center p-6 text-center">
+            <h3 class="text-2xl font-black text-amber-400 mb-6 text-stroke">GET EQUIPMENT!</h3>
+            
+            <div id="gacha-result-card" class="w-32 h-32 rounded-3xl border-4 rarity-epic flex flex-col items-center justify-center text-5xl mb-4 shadow-2xl animate-bounce">
+                🗡️
+            </div>
+
+            <div id="gacha-result-name" class="text-xl font-black text-white">ドラゴンスレイヤー</div>
+            <div id="gacha-result-rarity" class="text-xs font-bold text-purple-400 uppercase tracking-widest mt-1">EPIC WEAPON</div>
+            <div id="gacha-result-stat" class="text-sm font-black text-emerald-400 mt-2">攻撃力 +50</div>
+
+            <button id="gacha-close-btn" class="w-full max-w-xs py-3 rounded-2xl habby-btn-green font-black text-lg text-white mt-8">
+                確認
+            </button>
+        </div>
+
+        <!-- Level Up Modal (HABBY Rogue-lite Skill Select) -->
+        <div id="levelup-modal" class="absolute inset-0 z-40 bg-slate-950/80 backdrop-blur-md hidden flex flex-col justify-center items-center p-6">
+            <div class="text-center mb-6">
+                <span class="text-amber-400 text-sm font-black uppercase tracking-widest">LEVEL UP!</span>
+                <h2 class="text-3xl font-black text-white text-stroke">スキルを選択</h2>
+            </div>
+
+            <!-- Skill Cards Container -->
+            <div id="skill-options" class="w-full flex flex-col gap-4">
+                <!-- Cards will be dynamically inserted here -->
+            </div>
+        </div>
+
+        <!-- Game Over / Victory Screen -->
+        <div id="gameover-modal" class="absolute inset-0 z-40 bg-slate-950/90 backdrop-blur-md hidden flex flex-col items-center justify-center p-6 text-center">
+            <div id="gameover-title-container" class="mb-4">
+                <h2 id="gameover-title" class="text-4xl font-black text-red-500 text-stroke">GAME OVER</h2>
+                <p id="gameover-subtitle" class="text-slate-400 text-sm mt-1">魔物の群れに倒された...</p>
+            </div>
+
+            <!-- Stats Card -->
+            <div class="w-full habby-card rounded-2xl p-5 my-3 flex flex-col gap-3">
+                <div class="flex justify-between items-center border-b border-slate-700/60 pb-2">
+                    <span class="text-slate-400 font-bold text-sm"><i class="fa-solid fa-clock text-blue-400 mr-2"></i>生存時間</span>
+                    <span id="final-time" class="text-lg font-black text-white">00:00</span>
+                </div>
+                <div class="flex justify-between items-center border-b border-slate-700/60 pb-2">
+                    <span class="text-slate-400 font-bold text-sm"><i class="fa-solid fa-skull text-red-400 mr-2"></i>撃破数</span>
+                    <span id="final-kills" class="text-lg font-black text-white">0</span>
+                </div>
+                <div class="flex justify-between items-center border-b border-slate-700/60 pb-2">
+                    <span class="text-slate-400 font-bold text-sm"><i class="fa-solid fa-star text-amber-400 mr-2"></i>到達レベル</span>
+                    <span id="final-level" class="text-lg font-black text-white">Lv.1</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-slate-400 font-bold text-sm"><i class="fa-solid fa-coins text-amber-400 mr-2"></i>獲得コイン</span>
+                    <span id="final-coins" class="text-lg font-black text-amber-300">+0</span>
+                </div>
+            </div>
+
+            <button id="restart-btn" class="w-full py-4 rounded-2xl habby-btn-orange text-xl font-black tracking-wider text-white uppercase text-stroke mt-2">
+                ロビーへ戻る <i class="fa-solid fa-house ml-2"></i>
+            </button>
+        </div>
+
+    </div>
+
+    <!-- Script Game Logic -->
+    <script>
+        // --- Game Setup & Global Variables ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Resize Canvas
+        function resizeCanvas() {
+            const rect = canvas.parentElement.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // Game States
+        const STATE = { START: 0, PLAYING: 1, LEVELUP: 2, GAMEOVER: 3 };
+        let currentState = STATE.START;
+
+        // Player / Controls
+        let touchStartPos = null;
+        let touchCurrentPos = null;
+        let isDragging = false;
+
+        // Game Entities
+        let player;
+        let enemies = [];
+        let bullets = [];
+        let expGems = [];
+        let coinItems = [];
+        let particles = [];
+        let floatingTexts = [];
+
+        // Game Stats & Economy
+        let lastTime = 0;
+        let gameTime = 0;
+        let kills = 0;
+        let bossesDefeated = 0;
+        const TARGET_BOSS_KILLS = 3;
+        let spawnTimer = 0;
+        let bossSpawnedTimer = 0;
+
+        let totalCoins = 100;
+        let sessionCoins = 0;
+
+        // Stages Configuration
+        let selectedStageId = 1;
+        const STAGES = {
+            1: { name: "緑の草原", bgColor: '#0f172a', gridColor: 'rgba(255, 255, 255, 0.03)', enemyHpMult: 1.0, enemySpeedMult: 1.0, bossHp: 500 },
+            2: { name: "灼熱の洞窟", bgColor: '#1c0a0a', gridColor: 'rgba(239, 68, 68, 0.08)', enemyHpMult: 1.6, enemySpeedMult: 1.25, bossHp: 950 },
+            3: { name: "深淵の魔城", bgColor: '#110c1d', gridColor: 'rgba(168, 85, 247, 0.08)', enemyHpMult: 2.4, enemySpeedMult: 1.45, bossHp: 1600 }
+        };
+
+        // --- EQUIPMENT & GACHA DATABASE ---
+        const EQUIPMENT_ITEMS = [
+            // Weapons
+            { id: 'w1', type: 'weapon', name: '木の杖', rarity: 'common', stat: 10, icon: '🪄' },
+            { id: 'w2', type: 'weapon', name: '鉄のブレード', rarity: 'rare', stat: 25, icon: '⚔️' },
+            { id: 'w3', type: 'weapon', name: 'エレキワンド', rarity: 'epic', stat: 50, icon: '⚡' },
+            { id: 'w4', type: 'weapon', name: '龍の咆哮', rarity: 'legendary', stat: 100, icon: '🐲' },
+            // Armors
+            { id: 'a1', type: 'armor', name: '布の服', rarity: 'common', stat: 30, icon: '👕' },
+            { id: 'a2', type: 'armor', name: 'チェインメイル', rarity: 'rare', stat: 75, icon: '🛡️' },
+            { id: 'a3', type: 'armor', name: '騎士の鎧', rarity: 'epic', stat: 150, icon: '🦾' },
+            { id: 'a4', type: 'armor', name: '聖なる盾', rarity: 'legendary', stat: 300, icon: '👑' }
+        ];
+
+        let inventory = [EQUIPMENT_ITEMS[0], EQUIPMENT_ITEMS[4]];
+        let equippedWeapon = EQUIPMENT_ITEMS[0];
+        let equippedArmor = EQUIPMENT_ITEMS[4];
+
+        // Audio Effects (Synthesized)
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playSound(type) {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            const now = audioCtx.currentTime;
+
+            if (type === 'shoot') {
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(400, now);
+                osc.frequency.exponentialRampToValueAtTime(100, now + 0.1);
+                gain.gain.setValueAtTime(0.08, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.1);
+                osc.start(now);
+                osc.stop(now + 0.1);
+            } else if (type === 'hit') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(150, now);
+                osc.frequency.linearRampToValueAtTime(50, now + 0.08);
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.08);
+                osc.start(now);
+                osc.stop(now + 0.08);
+            } else if (type === 'exp') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(600, now);
+                osc.frequency.exponentialRampToValueAtTime(1200, now + 0.08);
+                gain.gain.setValueAtTime(0.06, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.08);
+                osc.start(now);
+                osc.stop(now + 0.08);
+            } else if (type === 'coin') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(900, now);
+                osc.frequency.setValueAtTime(1300, now + 0.06);
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.12);
+                osc.start(now);
+                osc.stop(now + 0.12);
+            } else if (type === 'levelup' || type === 'gacha') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(300, now);
+                osc.frequency.setValueAtTime(400, now + 0.1);
+                osc.frequency.setValueAtTime(600, now + 0.2);
+                gain.gain.setValueAtTime(0.15, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.4);
+                osc.start(now);
+                osc.stop(now + 0.4);
+            }
+        }
+
+        // --- STAGE SELECTION ---
+        function selectStage(stageId) {
+            selectedStageId = stageId;
+            [1, 2, 3].forEach(id => {
+                const btn = document.getElementById(`stage-btn-${id}`);
+                if (id === stageId) {
+                    btn.className = "p-2 rounded-xl border-2 border-amber-400 bg-amber-950/60 text-center transition-all scale-105 shadow-lg shadow-amber-500/20";
+                    btn.querySelector('div:last-child').className = "text-[10px] font-black text-amber-300";
+                } else {
+                    btn.className = "p-2 rounded-xl border-2 border-slate-800 bg-slate-900/60 text-center transition-all opacity-70";
+                    btn.querySelector('div:last-child').className = "text-[10px] font-black text-slate-400";
+                }
+            });
+        }
+
+        // --- SKILL SYSTEM ---
+        const ALL_SKILLS = [
+            { id: 'multishot', name: 'マルチショット', desc: '発射される弾の数が1つ増加', icon: 'fa-burst', color: 'from-amber-500 to-orange-500' },
+            { id: 'fire-rate', name: '連射力強化', desc: '攻撃スピードが25%アップ', icon: 'fa-bolt', color: 'from-yellow-400 to-amber-500' },
+            { id: 'orbit-blade', name: '回転カッター', desc: '回転刃を+1枚追加 & 旋回速度UP', icon: 'fa-circle-notch', color: 'from-cyan-400 to-blue-500' },
+            { id: 'pierce', name: '貫通弾', desc: '弾が敵を貫通するようになる', icon: 'fa-arrow-right-to-line', color: 'from-purple-500 to-indigo-500' },
+            { id: 'damage-up', name: '攻撃力UP', desc: 'すべての攻撃ダメージが30%増加', icon: 'fa-hand-fist', color: 'from-red-500 to-rose-600' },
+            { id: 'speed-up', name: '移動速度UP', desc: 'スライムの移動速度が20%アップ', icon: 'fa-person-running', color: 'from-emerald-400 to-green-600' },
+            { id: 'lightning', name: 'サンダーボルト', desc: '雷の対象数+2体 & 攻撃頻度UP', icon: 'fa-cloud-bolt', color: 'from-blue-400 to-indigo-600' }
+        ];
+
+        // --- CLASSES ---
+
+        class Bullet {
+            constructor(x, y, angle, damage, isPiercing = false) {
+                this.x = x;
+                this.y = y;
+                this.speed = 10;
+                this.vx = Math.cos(angle) * this.speed;
+                this.vy = Math.sin(angle) * this.speed;
+                this.radius = 5;
+                this.damage = damage;
+                this.isPiercing = isPiercing;
+                this.hitEnemies = new Set();
+                this.toRemove = false;
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+
+                if (this.x < -20 || this.x > canvas.width + 20 || this.y < -20 || this.y > canvas.height + 20) {
+                    this.toRemove = true;
+                    return;
+                }
+
+                for (let i = 0; i < enemies.length; i++) {
+                    let enemy = enemies[i];
+                    if (!enemy || enemy.hp <= 0 || this.hitEnemies.has(enemy)) continue;
+
+                    const dist = Math.hypot(enemy.x - this.x, enemy.y - this.y);
+                    if (dist < enemy.radius + this.radius) {
+                        enemy.takeDamage(this.damage);
+                        this.hitEnemies.add(enemy);
+
+                        if (!this.isPiercing) {
+                            this.toRemove = true;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            draw() {
+                ctx.save();
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = this.isPiercing ? '#c084fc' : '#fbbf24';
+                ctx.fill();
+                ctx.lineWidth = 1.5;
+                ctx.strokeStyle = '#fff';
+                ctx.stroke();
+                ctx.restore();
+            }
+        }
+
+        class Enemy {
+            constructor(x, y, type = 'normal') {
+                this.x = x;
+                this.y = y;
+                this.type = type;
+
+                const stage = STAGES[selectedStageId] || STAGES[1];
+
+                if (type === 'boss') {
+                    this.radius = 38;
+                    this.speed = 1.0 * stage.enemySpeedMult;
+                    this.maxHp = stage.bossHp;
+                    this.hp = this.maxHp;
+                    this.color = '#dc2626';
+                    this.expValue = 100;
+                    this.coinValue = 50;
+                    this.pulseAnim = 0;
+                } else if (type === 'fast') {
+                    this.radius = 13;
+                    this.speed = 2.4 * stage.enemySpeedMult;
+                    this.maxHp = Math.round(18 * stage.enemyHpMult);
+                    this.hp = this.maxHp;
+                    this.color = '#a855f7';
+                    this.expValue = 15;
+                    this.coinValue = 5;
+                    this.pulseAnim = Math.random() * Math.PI;
+                } else { // normal
+                    this.radius = 17;
+                    this.speed = 1.5 * stage.enemySpeedMult;
+                    this.maxHp = Math.round(30 * stage.enemyHpMult);
+                    this.hp = this.maxHp;
+                    this.color = '#c2410c';
+                    this.expValue = 10;
+                    this.coinValue = 2;
+                }
+
+                this.hitTimer = 0;
+            }
+
+            update() {
+                if (!player) return;
+
+                const angle = Math.atan2(player.y - this.y, player.x - this.x);
+                this.x += Math.cos(angle) * this.speed;
+                this.y += Math.sin(angle) * this.speed;
+
+                if (this.hitTimer > 0) this.hitTimer--;
+                this.pulseAnim += 0.05;
+
+                const dist = Math.hypot(player.x - this.x, player.y - this.y);
+                if (dist < player.radius + this.radius) {
+                    const dmg = this.type === 'boss' ? 30 : 10;
+                    player.takeDamage(dmg);
+                }
+            }
+
+            takeDamage(amount) {
+                this.hp -= amount;
+                this.hitTimer = 3;
+
+                floatingTexts.push(new FloatingText(this.x, this.y, Math.round(amount).toString()));
+
+                for (let i = 0; i < 3; i++) {
+                    particles.push(new Particle(this.x, this.y, this.color));
+                }
+
+                if (this.hp <= 0) {
+                    kills++;
+                    expGems.push(new ExpGem(this.x, this.y, this.expValue));
+                    if (Math.random() < 0.6 || this.type === 'boss') {
+                        coinItems.push(new CoinItem(this.x, this.y, this.coinValue));
+                    }
+
+                    if (this.type === 'boss') {
+                        bossesDefeated++;
+                        if (bossesDefeated >= TARGET_BOSS_KILLS) {
+                            gameOver(true);
+                        }
+                    }
+                }
+            }
+
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+
+                if (this.hitTimer > 0) {
+                    ctx.fillStyle = '#ffffff';
+                }
+
+                if (this.type === 'boss') {
+                    // デモンロード（禍々しい邪神ボス）
+                    const pulse = Math.sin(this.pulseAnim) * 5;
+
+                    // 1. 蠢く禍々しい暗黒波動オーラ
+                    ctx.beginPath();
+                    ctx.arc(0, 0, this.radius + 16 + pulse, 0, Math.PI * 2);
+                    ctx.fillStyle = 'rgba(220, 38, 38, 0.25)';
+                    ctx.fill();
+
+                    // 2. 悪魔の巨大な羽（翼）
+                    ctx.fillStyle = '#2a0404';
+                    [-1, 1].forEach(dir => {
+                        ctx.beginPath();
+                        ctx.moveTo(dir * 15, -10);
+                        ctx.quadraticCurveTo(dir * (this.radius + 45), -this.radius - 20, dir * (this.radius + 28), 12);
+                        ctx.quadraticCurveTo(dir * (this.radius + 32), 35, dir * 10, 18);
+                        ctx.fill();
+                        ctx.strokeStyle = '#ef4444';
+                        ctx.lineWidth = 1.5;
+                        ctx.stroke();
+                    });
+
+                    // 3. 巨躯本体（黒紅グラデーション）
+                    if (this.hitTimer <= 0) {
+                        const grad = ctx.createRadialGradient(0, 0, 5, 0, 0, this.radius);
+                        grad.addColorStop(0, '#ef4444');
+                        grad.addColorStop(0.5, '#7f1d1d');
+                        grad.addColorStop(1, '#090000');
+                        ctx.fillStyle = grad;
+                    }
+                    ctx.beginPath();
+                    ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = '#000000';
+                    ctx.lineWidth = 3.5;
+                    ctx.stroke();
+
+                    // 4. 鋭く禍々しい角
+                    ctx.fillStyle = '#0f0f12';
+                    [-1, 1].forEach(dir => {
+                        ctx.beginPath();
+                        ctx.moveTo(dir * 16, -this.radius + 6);
+                        ctx.quadraticCurveTo(dir * (this.radius + 24), -this.radius - 35, dir * (this.radius + 10), -this.radius - 45);
+                        ctx.quadraticCurveTo(dir * (this.radius - 5), -this.radius - 22, dir * 5, -this.radius + 12);
+                        ctx.fill();
+                        ctx.strokeStyle = '#dc2626';
+                        ctx.lineWidth = 2;
+                        ctx.stroke();
+                    });
+
+                    // 5. 凶悪に光る複眼（4つの不気味な赤/黄目）
+                    ctx.fillStyle = '#facc15';
+                    ctx.shadowColor = '#ef4444';
+                    ctx.shadowBlur = 14;
+                    [-14, -5, 5, 14].forEach((offsetX, idx) => {
+                        const offsetY = Math.abs(offsetX) === 14 ? -7 : -2;
+                        ctx.beginPath();
+                        ctx.arc(offsetX, offsetY, idx === 1 || idx === 2 ? 5 : 3.5, 0, Math.PI * 2);
+                        ctx.fill();
+                    });
+                    ctx.shadowBlur = 0;
+
+                    // 6. 裂けた口と鋭い牙
+                    ctx.fillStyle = '#000000';
+                    ctx.beginPath();
+                    ctx.ellipse(0, 14, 17, 10, 0, 0, Math.PI);
+                    ctx.fill();
+                    ctx.fillStyle = '#ffffff';
+                    [-11, -5, 0, 5, 11].forEach(x => {
+                        ctx.beginPath();
+                        ctx.moveTo(x - 2, 14);
+                        ctx.lineTo(x, 22);
+                        ctx.lineTo(x + 2, 14);
+                        ctx.fill();
+                    });
+
+                } else if (this.type === 'fast') {
+                    // ヴェノムスプライト（極悪な触手付きの紫モンスター）
+                    const pulse = Math.sin(this.pulseAnim * 2) * 2;
+
+                    // 蠢く極悪触手
+                    ctx.strokeStyle = '#581c87';
+                    ctx.lineWidth = 3.5;
+                    for (let i = 0; i < 6; i++) {
+                        const angle = (Math.PI / 3) * i + this.pulseAnim;
+                        ctx.beginPath();
+                        ctx.moveTo(0, 0);
+                        ctx.lineTo(Math.cos(angle) * (this.radius + 12), Math.sin(angle) * (this.radius + 12));
+                        ctx.stroke();
+                    }
+
+                    if (this.hitTimer <= 0) {
+                        ctx.fillStyle = '#6b21a8';
+                    }
+                    ctx.beginPath();
+                    ctx.arc(0, 0, this.radius + pulse, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = '#2e1065';
+                    ctx.lineWidth = 2.5;
+                    ctx.stroke();
+
+                    // 縦裂け瞳孔の3ツ目
+                    [-6, 0, 6].forEach((eyeX, idx) => {
+                        const eyeY = idx === 1 ? -7 : -1;
+                        ctx.fillStyle = '#4ade80';
+                        ctx.beginPath();
+                        ctx.arc(eyeX, eyeY, 3.5, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.fillStyle = '#000000';
+                        ctx.fillRect(eyeX - 0.5, eyeY - 2.5, 1, 5);
+                    });
+
+                } else {
+                    // シャドウデビル（角と不気味な吊り目を持つ闇のモンスター）
+                    if (this.hitTimer <= 0) {
+                        ctx.fillStyle = '#991b1b';
+                    }
+                    ctx.beginPath();
+                    ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = '#450a0a';
+                    ctx.lineWidth = 2.5;
+                    ctx.stroke();
+
+                    // 鋭い漆黒の角
+                    ctx.fillStyle = '#18181b';
+                    [-1, 1].forEach(dir => {
+                        ctx.beginPath();
+                        ctx.moveTo(dir * 8, -this.radius + 2);
+                        ctx.lineTo(dir * 16, -this.radius - 12);
+                        ctx.lineTo(dir * 2, -this.radius + 6);
+                        ctx.fill();
+                    });
+
+                    // 吊り上がった赤い眼
+                    ctx.fillStyle = '#f87171';
+                    [-5, 5].forEach(dir => {
+                        ctx.beginPath();
+                        ctx.ellipse(dir * 5, -2, 5, 2.8, dir * 0.45, 0, Math.PI * 2);
+                        ctx.fill();
+                    });
+                }
+
+                ctx.restore();
+
+                if (this.type !== 'boss') {
+                    const barW = this.radius * 1.8;
+                    const barH = 4;
+                    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+                    ctx.fillRect(this.x - barW / 2, this.y + this.radius + 5, barW, barH);
+                    const healthRatio = Math.max(0, this.hp / this.maxHp);
+                    ctx.fillStyle = '#ef4444';
+                    ctx.fillRect(this.x - barW / 2, this.y + this.radius + 5, barW * healthRatio, barH);
+                }
+            }
+        }
+
+        class Player {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.radius = 18;
+                this.speed = 3.5;
+                
+                const bonusHp = equippedArmor ? equippedArmor.stat : 0;
+                const bonusDmg = equippedWeapon ? equippedWeapon.stat : 0;
+
+                this.maxHp = 100 + bonusHp;
+                this.hp = this.maxHp;
+                this.level = 1;
+                this.exp = 0;
+                this.nextLevelExp = 100;
+                this.hitTimer = 0;
+
+                this.multishot = 1;
+                this.fireRate = 1;
+                this.damage = 20 + bonusDmg;
+                this.hasPierce = false;
+                this.orbitBlades = 0;
+                this.orbitSpeed = 1.0;
+                this.hasLightning = false;
+                this.lightningTargets = 3;
+                this.lightningInterval = 90;
+                this.lightningTimer = 0;
+
+                this.shootTimer = 0;
+                this.vx = 0;
+                this.vy = 0;
+                
+                // 生き生きとしたモーション用の変数
+                this.animTimer = 0;
+            }
+
+            addExp(amount) {
+                this.exp += amount;
+                if (this.exp >= this.nextLevelExp) {
+                    this.exp -= this.nextLevelExp;
+                    this.level++;
+                    this.nextLevelExp = Math.round(this.nextLevelExp * 1.3);
+                    triggerLevelUp();
+                }
+            }
+
+            takeDamage(amount) {
+                if (this.hitTimer > 0) return;
+                this.hp -= amount;
+                this.hitTimer = 10;
+                floatingTexts.push(new FloatingText(this.x, this.y - 10, `-${amount}`));
+                if (this.hp <= 0) {
+                    gameOver(false);
+                }
+            }
+
+            update() {
+                if (this.hitTimer > 0) this.hitTimer--;
+
+                this.x += this.vx;
+                this.y += this.vy;
+
+                this.x = Math.max(this.radius, Math.min(canvas.width - this.radius, this.x));
+                this.y = Math.max(this.radius + 60, Math.min(canvas.height - this.radius, this.y));
+
+                // アニメーションタイマー更新
+                const moveSpeed = Math.hypot(this.vx, this.vy);
+                this.animTimer += 0.15 + (moveSpeed * 0.05);
+
+                this.shootTimer += 1 * this.fireRate;
+                if (this.shootTimer >= 18) {
+                    this.shootTimer = 0;
+                    this.autoShoot();
+                }
+
+                if (this.hasLightning) {
+                    this.lightningTimer++;
+                    if (this.lightningTimer >= this.lightningInterval) {
+                        this.lightningTimer = 0;
+                        this.triggerLightning();
+                    }
+                }
+            }
+
+            autoShoot() {
+                let nearest = null;
+                let minDist = Infinity;
+                for (let enemy of enemies) {
+                    let d = Math.hypot(enemy.x - this.x, enemy.y - this.y);
+                    if (d < minDist) {
+                        minDist = d;
+                        nearest = enemy;
+                    }
+                }
+
+                if (nearest) {
+                    const angle = Math.atan2(nearest.y - this.y, nearest.x - this.x);
+                    const spread = 0.2;
+
+                    for (let i = 0; i < this.multishot; i++) {
+                        const offsetAngle = angle + (i - (this.multishot - 1) / 2) * spread;
+                        bullets.push(new Bullet(this.x, this.y, offsetAngle, this.damage, this.hasPierce));
+                    }
+                    playSound('shoot');
+                }
+            }
+
+            triggerLightning() {
+                if (enemies.length === 0) return;
+                const targets = [...enemies].sort(() => 0.5 - Math.random()).slice(0, this.lightningTargets);
+                targets.forEach(target => {
+                    target.takeDamage(this.damage * 1.5);
+                    particles.push(new LightningEffect(this.x, this.y, target.x, target.y));
+                });
+                playSound('hit');
+            }
+
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+
+                // 移動方向に応じてスライム傾ける
+                const tiltAngle = this.vx * 0.08;
+                ctx.rotate(tiltAngle);
+
+                // ぷにぷに呼吸・変形モーション
+                const squishX = 1 + Math.sin(this.animTimer) * 0.08;
+                const squishY = 1 - Math.sin(this.animTimer) * 0.08;
+                ctx.scale(squishX, squishY);
+
+                const bodyColor = this.hitTimer > 0 ? '#ffffff' : '#10b981';
+
+                // 影
+                ctx.beginPath();
+                ctx.ellipse(0, this.radius - 2, this.radius * 0.85, 5, 0, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+                ctx.fill();
+
+                // 本体 (みずみずしいスライムグラデーション)
+                const grad = ctx.createRadialGradient(-4, -6, 2, 0, 0, this.radius);
+                grad.addColorStop(0, '#6ee7b7');
+                grad.addColorStop(0.4, bodyColor);
+                grad.addColorStop(1, '#047857');
+
+                ctx.beginPath();
+                ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = grad;
+                ctx.fill();
+                ctx.lineWidth = 2.5;
+                ctx.strokeStyle = '#065f46';
+                ctx.stroke();
+
+                // 水滴・ツヤのハイライト
+                ctx.beginPath();
+                ctx.ellipse(-this.radius * 0.4, -this.radius * 0.4, this.radius * 0.3, this.radius * 0.15, -Math.PI / 4, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.65)';
+                ctx.fill();
+
+                // イキイキした瞳（生き生きとしたハイライト入り）
+                ctx.fillStyle = '#0f172a';
+                [-6, 6].forEach(eyeX => {
+                    ctx.beginPath();
+                    ctx.arc(eyeX, -3, 3.2, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // キャッチライト（目の輝き）
+                    ctx.fillStyle = '#ffffff';
+                    ctx.beginPath();
+                    ctx.arc(eyeX + 1, -4.5, 1.2, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = '#0f172a';
+                });
+
+                // ニヤリとした楽しそうな口
+                ctx.beginPath();
+                ctx.arc(0, 1, 4.5, 0.1 * Math.PI, 0.9 * Math.PI);
+                ctx.lineWidth = 1.8;
+                ctx.strokeStyle = '#0f172a';
+                ctx.stroke();
+
+                ctx.restore();
+            }
+        }
+
+        class ExpGem {
+            constructor(x, y, value) {
+                this.x = x;
+                this.y = y;
+                this.value = value;
+                this.radius = 6;
+                this.toRemove = false;
+            }
+
+            update() {
+                const dist = Math.hypot(player.x - this.x, player.y - this.y);
+                if (dist < 120) {
+                    const angle = Math.atan2(player.y - this.y, player.x - this.x);
+                    this.x += Math.cos(angle) * 7;
+                    this.y += Math.sin(angle) * 7;
+                }
+
+                if (dist < player.radius + this.radius) {
+                    player.addExp(this.value);
+                    playSound('exp');
+                    this.toRemove = true;
+                }
+            }
+
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(Math.PI / 4);
+                ctx.fillStyle = '#38bdf8';
+                ctx.fillRect(-this.radius/2, -this.radius/2, this.radius, this.radius);
+                ctx.restore();
+            }
+        }
+
+        class CoinItem {
+            constructor(x, y, value) {
+                this.x = x;
+                this.y = y;
+                this.value = value;
+                this.radius = 6;
+                this.toRemove = false;
+            }
+
+            update() {
+                const dist = Math.hypot(player.x - this.x, player.y - this.y);
+                if (dist < 120) {
+                    const angle = Math.atan2(player.y - this.y, player.x - this.x);
+                    this.x += Math.cos(angle) * 7;
+                    this.y += Math.sin(angle) * 7;
+                }
+
+                if (dist < player.radius + this.radius) {
+                    sessionCoins += this.value;
+                    totalCoins += this.value;
+                    playSound('coin');
+                    this.toRemove = true;
+                }
+            }
+
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.beginPath();
+                ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = '#f59e0b';
+                ctx.fill();
+                ctx.strokeStyle = '#fef08a';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+                ctx.restore();
+            }
+        }
+
+        class FloatingText {
+            constructor(x, y, text) {
+                this.x = x + (Math.random() - 0.5) * 10;
+                this.y = y;
+                this.text = text;
+                this.life = 1.0;
+                this.vy = -1.5;
+            }
+
+            update() {
+                this.y += this.vy;
+                this.life -= 0.03;
+            }
+
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = Math.max(0, this.life);
+                ctx.font = '900 14px "MPLUSRounded1c", sans-serif';
+                ctx.fillStyle = '#facc15';
+                ctx.strokeStyle = '#000000';
+                ctx.lineWidth = 3;
+                ctx.strokeText(this.text, this.x, this.y);
+                ctx.fillText(this.text, this.x, this.y);
+                ctx.restore();
+            }
+        }
+
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x;
+                this.y = y;
+                this.color = color;
+                this.radius = Math.random() * 3 + 2;
+                const angle = Math.random() * Math.PI * 2;
+                const speed = Math.random() * 4 + 1;
+                this.vx = Math.cos(angle) * speed;
+                this.vy = Math.sin(angle) * speed;
+                this.life = 1.0;
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.life -= 0.04;
+            }
+
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = Math.max(0, this.life);
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        class LightningEffect {
+            constructor(x1, y1, x2, y2) {
+                this.x1 = x1;
+                this.y1 = y1;
+                this.x2 = x2;
+                this.y2 = y2;
+                this.life = 1.0;
+            }
+
+            update() {
+                this.life -= 0.1;
+            }
+
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = Math.max(0, this.life);
+                ctx.strokeStyle = '#60a5fa';
+                ctx.lineWidth = 4;
+                ctx.beginPath();
+                ctx.moveTo(this.x1, this.y1);
+                const midX = (this.x1 + this.x2) / 2 + (Math.random() - 0.5) * 30;
+                const midY = (this.y1 + this.y2) / 2 + (Math.random() - 0.5) * 30;
+                ctx.lineTo(midX, midY);
+                ctx.lineTo(this.x2, this.y2);
+                ctx.stroke();
+                ctx.restore();
+            }
+        }
+
+        // --- CONTROLS ---
+
+        function setupControls() {
+            const handleStart = (e) => {
+                if (currentState !== STATE.PLAYING) return;
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                const rect = canvas.getBoundingClientRect();
+                touchStartPos = { x: clientX - rect.left, y: clientY - rect.top };
+                isDragging = true;
+
+                document.getElementById('joystick-hint').classList.add('opacity-0');
+            };
+
+            const handleMove = (e) => {
+                if (!isDragging || currentState !== STATE.PLAYING) return;
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                const rect = canvas.getBoundingClientRect();
+                touchCurrentPos = { x: clientX - rect.left, y: clientY - rect.top };
+
+                const dx = touchCurrentPos.x - touchStartPos.x;
+                const dy = touchCurrentPos.y - touchStartPos.y;
+                const angle = Math.atan2(dy, dx);
+                const dist = Math.min(Math.hypot(dx, dy), 50);
+
+                player.vx = Math.cos(angle) * (dist / 50) * player.speed;
+                player.vy = Math.sin(angle) * (dist / 50) * player.speed;
+            };
+
+            const handleEnd = () => {
+                isDragging = false;
+                if (player) {
+                    player.vx = 0;
+                    player.vy = 0;
+                }
+            };
+
+            canvas.addEventListener('mousedown', handleStart);
+            window.addEventListener('mousemove', handleMove);
+            window.addEventListener('mouseup', handleEnd);
+
+            canvas.addEventListener('touchstart', handleStart);
+            window.addEventListener('touchmove', handleMove);
+            window.addEventListener('touchend', handleEnd);
+        }
+
+        // --- SPAWNER LOGIC ---
+
+        function updateSpawning() {
+            spawnTimer++;
+            const spawnInterval = Math.max(12, 38 - selectedStageId * 8);
+
+            if (spawnTimer >= spawnInterval) {
+                spawnTimer = 0;
+                let x, y;
+                if (Math.random() < 0.5) {
+                    x = Math.random() < 0.5 ? -20 : canvas.width + 20;
+                    y = Math.random() * canvas.height;
+                } else {
+                    x = Math.random() * canvas.width;
+                    y = Math.random() < 0.5 ? -20 : canvas.height + 20;
+                }
+
+                const rand = Math.random();
+                let type = 'normal';
+                if (rand < 0.4) type = 'fast';
+
+                enemies.push(new Enemy(x, y, type));
+            }
+
+            bossSpawnedTimer += 1/60;
+            if (bossSpawnedTimer >= 30 && bossesDefeated < TARGET_BOSS_KILLS && !enemies.some(e => e.type === 'boss')) {
+                bossSpawnedTimer = 0;
+                enemies.push(new Enemy(canvas.width / 2, -40, 'boss'));
+            }
+        }
+
+        // --- GAME LOOP & UPDATES ---
+
+        function update(dt) {
+            if (currentState !== STATE.PLAYING) return;
+
+            // dt異常値防止（タブ切替時のフリーズ対策）
+            const safeDt = Math.min(dt, 0.1);
+            gameTime += safeDt;
+
+            if (player) player.update();
+
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                bullets[i].update();
+            }
+            bullets = bullets.filter(b => !b.toRemove);
+
+            for (let i = enemies.length - 1; i >= 0; i--) {
+                enemies[i].update();
+            }
+            enemies = enemies.filter(e => e.hp > 0);
+
+            for (let i = expGems.length - 1; i >= 0; i--) {
+                expGems[i].update();
+            }
+            expGems = expGems.filter(g => !g.toRemove);
+
+            for (let i = coinItems.length - 1; i >= 0; i--) {
+                coinItems[i].update();
+            }
+            coinItems = coinItems.filter(c => !c.toRemove);
+
+            for (let i = particles.length - 1; i >= 0; i--) {
+                particles[i].update();
+            }
+            particles = particles.filter(p => p.life > 0);
+
+            for (let i = floatingTexts.length - 1; i >= 0; i--) {
+                floatingTexts[i].update();
+            }
+            floatingTexts = floatingTexts.filter(ft => ft.life > 0);
+
+            updateSpawning();
+            updateHUD();
+        }
+
+        function render() {
+            const stage = STAGES[selectedStageId];
+            ctx.fillStyle = stage.bgColor;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.strokeStyle = stage.gridColor;
+            ctx.lineWidth = 1;
+            const gridSize = 40;
+            for (let x = 0; x < canvas.width; x += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, canvas.height);
+                ctx.stroke();
+            }
+            for (let y = 0; y < canvas.height; y += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvas.width, y);
+                ctx.stroke();
+            }
+
+            if (currentState === STATE.PLAYING || currentState === STATE.LEVELUP) {
+                expGems.forEach(g => g.draw());
+                coinItems.forEach(c => c.draw());
+                bullets.forEach(b => b.draw());
+                enemies.forEach(e => e.draw());
+                player.draw();
+                particles.forEach(p => p.draw());
+                floatingTexts.forEach(ft => ft.draw());
+            }
+        }
+
+        function gameLoop(timestamp) {
+            const dt = (timestamp - lastTime) / 1000;
+            lastTime = timestamp;
+
+            if (!isNaN(dt)) update(dt);
+            render();
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        // --- UI & TABS & LOBBY ---
+
+        function updateLobbyUI() {
+            document.getElementById('total-coins-display').innerText = totalCoins;
+
+            const homeW = document.getElementById('home-weapon-slot');
+            const homeA = document.getElementById('home-armor-slot');
+
+            if (equippedWeapon) {
+                homeW.className = `w-14 h-14 rounded-2xl border-2 flex items-center justify-center text-2xl rarity-${equippedWeapon.rarity}`;
+                homeW.innerText = equippedWeapon.icon;
+            }
+            if (equippedArmor) {
+                homeA.className = `w-14 h-14 rounded-2xl border-2 flex items-center justify-center text-2xl rarity-${equippedArmor.rarity}`;
+                homeA.innerText = equippedArmor.icon;
+            }
+
+            if (equippedWeapon) {
+                document.getElementById('equipped-weapon-card').className = `w-16 h-16 rounded-xl border-2 flex items-center justify-center text-3xl rarity-${equippedWeapon.rarity}`;
+                document.getElementById('equipped-weapon-card').innerText = equippedWeapon.icon;
+                document.getElementById('equipped-weapon-name').innerText = equippedWeapon.name;
+                document.getElementById('equipped-weapon-stat').innerText = `ATK +${equippedWeapon.stat}`;
+            }
+            if (equippedArmor) {
+                document.getElementById('equipped-armor-card').className = `w-16 h-16 rounded-xl border-2 flex items-center justify-center text-3xl rarity-${equippedArmor.rarity}`;
+                document.getElementById('equipped-armor-card').innerText = equippedArmor.icon;
+                document.getElementById('equipped-armor-name').innerText = equippedArmor.name;
+                document.getElementById('equipped-armor-stat').innerText = `HP +${equippedArmor.stat}`;
+            }
+
+            const invContainer = document.getElementById('inventory-list');
+            invContainer.innerHTML = '';
+            inventory.forEach((item) => {
+                const isEquipped = item === equippedWeapon || item === equippedArmor;
+                const itemDiv = document.createElement('div');
+                itemDiv.className = `w-14 h-14 rounded-xl border-2 flex items-center justify-center text-2xl cursor-pointer relative rarity-${item.rarity} ${isEquipped ? 'ring-2 ring-amber-400' : ''}`;
+                itemDiv.innerText = item.icon;
+
+                if (isEquipped) {
+                    const badge = document.createElement('span');
+                    badge.className = 'absolute -top-1 -right-1 bg-amber-500 text-black font-black text-[9px] px-1 rounded';
+                    badge.innerText = 'E';
+                    itemDiv.appendChild(badge);
+                }
+
+                itemDiv.onclick = () => {
+                    if (item.type === 'weapon') equippedWeapon = item;
+                    if (item.type === 'armor') equippedArmor = item;
+                    updateLobbyUI();
+                };
+
+                invContainer.appendChild(itemDiv);
+            });
+        }
+
+        function switchTab(tabName) {
+            document.getElementById('tab-home-content').classList.add('hidden');
+            document.getElementById('tab-equip-content').classList.add('hidden');
+            document.getElementById('tab-gacha-content').classList.add('hidden');
+
+            document.getElementById('nav-home').className = "flex flex-col items-center gap-1 text-slate-500 font-bold text-xs";
+            document.getElementById('nav-equip').className = "flex flex-col items-center gap-1 text-slate-500 font-bold text-xs";
+            document.getElementById('nav-gacha').className = "flex flex-col items-center gap-1 text-slate-500 font-bold text-xs";
+
+            if (tabName === 'home') {
+                document.getElementById('tab-home-content').classList.remove('hidden');
+                document.getElementById('nav-home').className = "flex flex-col items-center gap-1 text-emerald-400 font-bold text-xs";
+            } else if (tabName === 'equip') {
+                document.getElementById('tab-equip-content').classList.remove('hidden');
+                document.getElementById('nav-equip').className = "flex flex-col items-center gap-1 text-emerald-400 font-bold text-xs";
+            } else if (tabName === 'gacha') {
+                document.getElementById('tab-gacha-content').classList.remove('hidden');
+                document.getElementById('nav-gacha').className = "flex flex-col items-center gap-1 text-emerald-400 font-bold text-xs";
+            }
+            updateLobbyUI();
+        }
+
+        function openGacha() {
+            if (totalCoins < 50) {
+                alert('コインが足りません！（敵を倒してゲットしよう）');
+                return;
+            }
+
+            totalCoins -= 50;
+            playSound('gacha');
+
+            const rand = Math.random();
+            let selectedPool = [];
+            if (rand < 0.50) {
+                selectedPool = EQUIPMENT_ITEMS.filter(i => i.rarity === 'common');
+            } else if (rand < 0.80) {
+                selectedPool = EQUIPMENT_ITEMS.filter(i => i.rarity === 'rare');
+            } else if (rand < 0.95) {
+                selectedPool = EQUIPMENT_ITEMS.filter(i => i.rarity === 'epic');
+            } else {
+                selectedPool = EQUIPMENT_ITEMS.filter(i => i.rarity === 'legendary');
+            }
+
+            const item = selectedPool[Math.floor(Math.random() * selectedPool.length)];
+            inventory.push(item);
+
+            const modal = document.getElementById('gacha-modal');
+            const card = document.getElementById('gacha-result-card');
+            card.className = `w-32 h-32 rounded-3xl border-4 flex flex-col items-center justify-center text-5xl mb-4 shadow-2xl animate-bounce rarity-${item.rarity}`;
+            card.innerText = item.icon;
+
+            document.getElementById('gacha-result-name').innerText = item.name;
+            document.getElementById('gacha-result-rarity').innerText = `${item.rarity.toUpperCase()} ${item.type.toUpperCase()}`;
+            document.getElementById('gacha-result-stat').innerText = `${item.type === 'weapon' ? '攻撃力' : '最大HP'} +${item.stat}`;
+
+            modal.classList.remove('hidden');
+            updateLobbyUI();
+        }
+
+        function updateHUD() {
+            document.getElementById('level-display').innerText = player.level;
+            document.getElementById('kill-count').innerText = kills;
+            document.getElementById('boss-display').innerText = `${bossesDefeated}/${TARGET_BOSS_KILLS}`;
+            document.getElementById('game-coins-display').innerText = sessionCoins;
+
+            const mins = Math.floor(gameTime / 60).toString().padStart(2, '0');
+            const secs = Math.floor(gameTime % 60).toString().padStart(2, '0');
+            document.getElementById('time-display').innerText = `${mins}:${secs}`;
+
+            const expRatio = (player.exp / player.nextLevelExp) * 100;
+            document.getElementById('exp-bar').style.width = `${Math.min(100, expRatio)}%`;
+        }
+
+        function triggerLevelUp() {
+            currentState = STATE.LEVELUP;
+            playSound('levelup');
+
+            const modal = document.getElementById('levelup-modal');
+            const container = document.getElementById('skill-options');
+            container.innerHTML = '';
+
+            const shuffled = [...ALL_SKILLS].sort(() => 0.5 - Math.random());
+            const options = shuffled.slice(0, 3);
+
+            options.forEach(skill => {
+                const card = document.createElement('div');
+                card.className = `skill-card habby-card p-4 rounded-2xl flex items-center gap-4 cursor-pointer border-2 border-slate-600 hover:border-amber-400`;
+                card.innerHTML = `
+                    <div class="w-14 h-14 rounded-xl bg-gradient-to-br ${skill.color} flex items-center justify-center text-2xl text-white shadow-lg shrink-0">
+                        <i class="fa-solid ${skill.icon}"></i>
+                    </div>
+                    <div class="flex-1">
+                        <h3 class="font-black text-lg text-white">${skill.name}</h3>
+                        <p class="text-xs text-slate-400 mt-0.5">${skill.desc}</p>
+                    </div>
+                `;
+
+                card.onclick = () => {
+                    applySkill(skill.id);
+                    modal.classList.add('hidden');
+                    currentState = STATE.PLAYING;
+                };
+
+                container.appendChild(card);
+            });
+
+            modal.classList.remove('hidden');
+        }
+
+        function applySkill(skillId) {
+            switch (skillId) {
+                case 'multishot': player.multishot += 1; break;
+                case 'fire-rate': player.fireRate *= 1.25; break;
+                case 'orbit-blade': 
+                    player.orbitBlades += 1;
+                    player.orbitSpeed += 0.2;
+                    break;
+                case 'pierce': player.hasPierce = true; break;
+                case 'damage-up': player.damage *= 1.3; break;
+                case 'speed-up': player.speed *= 1.2; break;
+                case 'lightning': 
+                    if (!player.hasLightning) {
+                        player.hasLightning = true;
+                    } else {
+                        player.lightningTargets += 2;
+                        player.lightningInterval = Math.max(30, player.lightningInterval - 15);
+                    }
+                    break;
+            }
+        }
+
+        function startGame() {
+            player = new Player(canvas.width / 2, canvas.height / 2);
+            enemies = [];
+            bullets = [];
+            expGems = [];
+            coinItems = [];
+            particles = [];
+            floatingTexts = [];
+            gameTime = 0;
+            kills = 0;
+            bossesDefeated = 0;
+            bossSpawnedTimer = 0;
+            sessionCoins = 0;
+
+            document.getElementById('start-screen').classList.add('hidden');
+            document.getElementById('gameover-modal').classList.add('hidden');
+            currentState = STATE.PLAYING;
+        }
+
+        function gameOver(isVictory = false) {
+            currentState = STATE.GAMEOVER;
+
+            const modal = document.getElementById('gameover-modal');
+            const title = document.getElementById('gameover-title');
+            const subtitle = document.getElementById('gameover-subtitle');
+
+            if (isVictory) {
+                title.innerText = "STAGE CLEAR!";
+                title.className = "text-4xl font-black text-emerald-400 text-stroke";
+                subtitle.innerText = `ボスを3体撃破して${STAGES[selectedStageId].name}を制覇した！`;
+            } else {
+                title.innerText = "GAME OVER";
+                title.className = "text-4xl font-black text-red-500 text-stroke";
+                subtitle.innerText = "魔物の群れに倒された...";
+            }
+
+            const mins = Math.floor(gameTime / 60).toString().padStart(2, '0');
+            const secs = Math.floor(gameTime % 60).toString().padStart(2, '0');
+            document.getElementById('final-time').innerText = `${mins}:${secs}`;
+            document.getElementById('final-kills').innerText = kills;
+            document.getElementById('final-level').innerText = `Lv.${player.level}`;
+            document.getElementById('final-coins').innerText = `+${sessionCoins}`;
+
+            modal.classList.remove('hidden');
+            updateLobbyUI();
+        }
+
+        // --- INIT & EVENT LISTENERS ---
+        document.getElementById('start-btn').addEventListener('click', startGame);
+        document.getElementById('restart-btn').addEventListener('click', () => {
+            document.getElementById('gameover-modal').classList.add('hidden');
+            document.getElementById('start-screen').classList.remove('hidden');
+            updateLobbyUI();
+        });
+
+        document.getElementById('nav-home').addEventListener('click', () => switchTab('home'));
+        document.getElementById('nav-equip').addEventListener('click', () => switchTab('equip'));
+        document.getElementById('nav-gacha').addEventListener('click', () => switchTab('gacha'));
+
+        document.getElementById('gacha-open-btn').addEventListener('click', openGacha);
+        document.getElementById('gacha-close-btn').addEventListener('click', () => {
+            document.getElementById('gacha-modal').classList.add('hidden');
+        });
+
+        setupControls();
+        selectStage(1);
+        updateLobbyUI();
+        requestAnimationFrame(gameLoop);
+    </script>
+</body>
+</html>

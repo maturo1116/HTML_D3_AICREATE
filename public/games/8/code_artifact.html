@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+    <title>左右だけピンポン（リズム・ラリー）</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Hachi+Maru+Pop&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Hachi Maru Pop', cursive, sans-serif;
+            touch-action: manipulation;
+            user-select: none;
+            -webkit-user-select: none;
+            overflow: hidden;
+        }
+        .font-orbitron {
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        @keyframes neon-glow {
+            0%, 100% { border-color: #06b6d4; box-shadow: 0 0 30px rgba(6, 182, 212, 0.7); }
+            50% { border-color: #ec4899; box-shadow: 0 0 50px rgba(236, 72, 153, 0.9); }
+        }
+        .neon-border {
+            animation: neon-glow 1.5s infinite ease-in-out;
+        }
+
+        @keyframes cyber-pulse {
+            0%, 100% { border-color: #eab308; box-shadow: 0 0 50px rgba(234, 179, 8, 0.9); }
+            50% { border-color: #ef4444; box-shadow: 0 0 80px rgba(239, 68, 68, 1); }
+        }
+        .fever-border {
+            animation: cyber-pulse 0.25s infinite ease-in-out;
+        }
+
+        @keyframes shake-screen {
+            0%, 100% { transform: translate(0, 0); }
+            20% { transform: translate(-8px, 6px); }
+            40% { transform: translate(8px, -6px); }
+            60% { transform: translate(-6px, -3px); }
+            80% { transform: translate(6px, 3px); }
+        }
+        .screen-shake {
+            animation: shake-screen 0.2s ease-in-out;
+        }
+
+        .pop-text-cyber {
+            color: #22d3ee;
+            text-shadow: 
+                -2px -2px 0 #ec4899,
+                 2px -2px 0 #ec4899,
+                -2px  2px 0 #ec4899,
+                 2px  2px 0 #ec4899,
+                 0px 4px 15px rgba(34,211,238,0.8);
+        }
+
+        .bg-cyber {
+            background: radial-gradient(circle at center, #1e1b4b 0%, #09090b 100%);
+        }
+    </style>
+</head>
+<body class="bg-cyber h-screen w-screen flex flex-col items-center justify-between p-2 sm:p-4 text-white overflow-hidden">
+
+    <!-- メインフレーム -->
+    <div id="main-frame" class="relative w-full max-w-2xl h-full max-h-[85vh] bg-zinc-950/90 backdrop-blur-md rounded-3xl p-2 sm:p-4 border-4 border-cyan-400 neon-border flex flex-col items-center justify-between overflow-hidden transition-all duration-300">
+
+        <!-- 1. スコア・タイマー情報バー -->
+        <div class="w-full grid grid-cols-4 gap-2 mb-2 bg-zinc-900/90 rounded-2xl p-2 border border-cyan-500/40 text-center z-10 shadow-inner shrink-0">
+            <!-- 残り時間 -->
+            <div id="timer-card" class="flex flex-col justify-center items-center bg-zinc-950/90 rounded-xl p-1 border border-cyan-500/30">
+                <span class="text-[9px] sm:text-xs font-bold text-cyan-300"><i class="fa-solid fa-clock mr-1"></i>残り時間</span>
+                <span id="timer" class="font-orbitron text-lg sm:text-2xl font-black text-cyan-400 tracking-wider">60</span>
+            </div>
+
+            <!-- スコア -->
+            <div class="flex flex-col justify-center items-center bg-zinc-950/90 rounded-xl p-1 border border-pink-500/30">
+                <span class="text-[9px] sm:text-xs font-bold text-pink-300"><i class="fa-solid fa-star mr-1"></i>スコア</span>
+                <span id="score" class="font-orbitron text-lg sm:text-2xl font-black text-pink-400 tracking-wider">0</span>
+            </div>
+
+            <!-- コンボ数 -->
+            <div class="flex flex-col justify-center items-center bg-zinc-950/90 rounded-xl p-1 border border-purple-500/30">
+                <span class="text-[9px] sm:text-xs font-bold text-purple-300"><i class="fa-solid fa-fire mr-1"></i>コンボ</span>
+                <span id="combo" class="font-orbitron text-lg sm:text-2xl font-black text-purple-400 tracking-wider">0</span>
+            </div>
+
+            <!-- 判定表示 -->
+            <div class="flex flex-col justify-center items-center bg-zinc-950/90 rounded-xl p-1 border border-yellow-500/30">
+                <span class="text-[9px] sm:text-xs font-bold text-yellow-300"><i class="fa-solid fa-bolt mr-1"></i>判定</span>
+                <span id="judgment" class="font-orbitron text-xs sm:text-base font-black text-yellow-400 tracking-wider">-</span>
+            </div>
+        </div>
+
+        <!-- 2. リズムゲーム キャンバスエリア -->
+        <div class="relative w-full flex-grow bg-zinc-900/60 rounded-2xl overflow-hidden border-2 border-cyan-500 shadow-2xl flex items-center justify-center my-1">
+            <canvas id="gameCanvas" class="w-full h-full block object-contain"></canvas>
+
+            <!-- フィーバーバナー -->
+            <div id="fever-banner" class="absolute top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-red-600 via-yellow-400 to-red-600 text-zinc-950 font-black px-4 py-1.5 rounded-full border-2 border-white shadow-[0_0_30px_rgba(239,68,68,0.9)] text-xs sm:text-sm tracking-wider hidden animate-bounce z-10 whitespace-nowrap">
+                🔥⚡ ラストスパート・ラッシュ発動中！！ ⚡🔥
+            </div>
+
+            <!-- スタート画面 -->
+            <div id="start-overlay" class="absolute inset-0 bg-zinc-950/95 backdrop-blur-md flex flex-col justify-center items-center p-4 text-center z-20">
+                <div class="mb-2 text-4xl sm:text-6xl animate-bounce">
+                    🏓✨💣
+                </div>
+                <h1 class="text-xl sm:text-3xl font-black mb-2 pop-text-cyber tracking-wide">左右だけピンポン<span class="text-pink-400 text-xs sm:text-lg block mt-1">リズム・ラリー エクストリーム</span></h1>
+                <p class="text-xs sm:text-sm text-zinc-300 mb-4 bg-zinc-900/90 p-3 rounded-2xl border border-cyan-500/40 max-w-md font-bold leading-relaxed shadow-lg">
+                    流れてくるノーツが判定ラインに重なった瞬間、左右のボタン（<span class="text-cyan-400 font-extrabold">◀ / ▶</span>）で打ち返せ！<br>
+                    ⭐ ギリギリのタイミングは<span class="text-yellow-400 font-extrabold">ジャストガード（1.5倍得点）</span>！<br>
+                    <span class="text-red-400 font-extrabold">💣 爆弾ノーツは押しちゃダメ！スルーしろ！</span>
+                </p>
+                <button id="start-btn" class="px-6 py-3 bg-gradient-to-r from-cyan-400 via-pink-500 to-yellow-400 hover:from-cyan-300 hover:to-pink-400 text-zinc-950 font-black text-lg sm:text-xl rounded-full shadow-[0_0_25px_rgba(6,182,212,0.7)] transform hover:scale-105 active:scale-95 transition-all duration-200 border-2 border-white cursor-pointer">
+                    <i class="fa-solid fa-play mr-2"></i>ラリー開始！
+                </button>
+            </div>
+
+            <!-- 結果画面 -->
+            <div id="result-overlay" class="absolute inset-0 bg-zinc-950/95 backdrop-blur-md flex flex-col justify-center items-center p-4 text-center z-20 hidden">
+                <div class="bg-zinc-900 border-4 border-cyan-400 rounded-3xl p-5 sm:p-6 max-w-md w-full shadow-[0_0_40px_rgba(6,182,212,0.5)] relative overflow-hidden">
+                    <h2 class="text-2xl sm:text-3xl font-black text-cyan-400 mb-1 font-orbitron">TIME UP!</h2>
+                    <p class="text-gray-300 text-xs sm:text-sm mb-3 font-bold">お疲れ様でした！今回のラリー結果は…？</p>
+
+                    <div class="bg-zinc-950 rounded-2xl p-3 mb-2 border border-cyan-500/30">
+                        <span class="text-[10px] font-bold text-cyan-300 block mb-1">最終スコア</span>
+                        <div id="result-score" class="font-orbitron text-3xl sm:text-5xl font-black text-pink-400 tracking-wider">0</div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2 mb-3">
+                        <div class="bg-zinc-950/80 rounded-xl p-2 border border-zinc-700">
+                            <span class="text-[10px] font-bold text-gray-400 block">最大コンボ</span>
+                            <span id="result-combo" class="font-orbitron text-base sm:text-lg font-bold text-purple-400">0</span>
+                        </div>
+                        <div class="bg-zinc-950/80 rounded-xl p-2 border border-zinc-700">
+                            <span class="text-[10px] font-bold text-gray-400 block">ハイスコア</span>
+                            <span id="result-highscore" class="font-orbitron text-base sm:text-lg font-bold text-yellow-300">0</span>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <span class="text-[10px] font-bold text-yellow-300 block mb-1">リズムランク</span>
+                        <div id="result-rank" class="text-3xl sm:text-4xl font-black text-cyan-400 mb-1 font-orbitron">S</div>
+                        <p id="result-comment" class="text-xs text-gray-200 font-bold">素晴らしいリズム感でした！</p>
+                    </div>
+
+                    <button id="restart-btn" class="w-full py-3 bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-zinc-950 font-black text-lg rounded-2xl shadow-lg transform hover:scale-105 active:scale-95 transition-all duration-200 border-2 border-white cursor-pointer">
+                        <i class="fa-solid fa-rotate-right mr-2"></i>もう一度プレイ
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. スマホ対応 左右タッチボタン -->
+        <div class="w-full grid grid-cols-2 gap-3 z-10 shrink-0">
+            <button id="btn-left" class="py-3 sm:py-4 bg-gradient-to-b from-cyan-400 to-cyan-600 active:from-cyan-500 active:to-cyan-700 border-b-4 border-cyan-950 active:border-b-0 rounded-2xl text-zinc-950 font-black text-lg sm:text-xl shadow-lg flex justify-center items-center transition-all select-none touch-none cursor-pointer">
+                <i class="fa-solid fa-arrow-left mr-2"></i> 左打ち [◀]
+            </button>
+            <button id="btn-right" class="py-3 sm:py-4 bg-gradient-to-b from-pink-400 to-pink-600 active:from-pink-500 active:to-pink-700 border-b-4 border-pink-950 active:border-b-0 rounded-2xl text-white font-black text-lg sm:text-xl shadow-lg flex justify-center items-center transition-all select-none touch-none cursor-pointer">
+                右打ち [▶] <i class="fa-solid fa-arrow-right ml-2"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- ゲームロジック実装 -->
+    <script>
+        // --- Web Audio API サウンドシステム ---
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        let audioCtx = null;
+
+        function initAudio() {
+            if (!audioCtx) audioCtx = new AudioCtx();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+        }
+
+        function playHitSound(isJust) {
+            if (!audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = isJust ? 'triangle' : 'sine';
+            osc.frequency.setValueAtTime(isJust ? 880 : 587.33, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(isJust ? 1760 : 880, audioCtx.currentTime + 0.15);
+
+            gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.15);
+        }
+
+        function playBombSound() {
+            if (!audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(30, audioCtx.currentTime + 0.4);
+
+            gain.gain.setValueAtTime(0.5, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.4);
+        }
+
+        function playMissSound() {
+            if (!audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(120, audioCtx.currentTime);
+            osc.frequency.setValueAtTime(80, audioCtx.currentTime + 0.1);
+
+            gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.2);
+        }
+
+        function playFeverSound() {
+            if (!audioCtx) return;
+            const notes = [523.25, 659.25, 783.99, 1046.50, 1318.51, 1567.98];
+            notes.forEach((freq, idx) => {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime + idx * 0.08);
+
+                gain.gain.setValueAtTime(0.25, audioCtx.currentTime + idx * 0.08);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + idx * 0.08 + 0.15);
+
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(audioCtx.currentTime + idx * 0.08);
+                osc.stop(audioCtx.currentTime + idx * 0.08 + 0.15);
+            });
+        }
+
+        // --- キャンバスとゲーム変数 ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const timerEl = document.getElementById('timer');
+        const scoreEl = document.getElementById('score');
+        const comboEl = document.getElementById('combo');
+        const judgmentEl = document.getElementById('judgment');
+        const timerCard = document.getElementById('timer-card');
+        const feverBanner = document.getElementById('fever-banner');
+        const mainFrame = document.getElementById('main-frame');
+
+        const startOverlay = document.getElementById('start-overlay');
+        const resultOverlay = document.getElementById('result-overlay');
+        const startBtn = document.getElementById('start-btn');
+        const restartBtn = document.getElementById('restart-btn');
+
+        const resultScoreEl = document.getElementById('result-score');
+        const resultComboEl = document.getElementById('result-combo');
+        const resultRankEl = document.getElementById('result-rank');
+        const resultCommentEl = document.getElementById('result-comment');
+        const resultHighscoreEl = document.getElementById('result-highscore');
+
+        const btnLeft = document.getElementById('btn-left');
+        const btnRight = document.getElementById('btn-right');
+
+        const CANVAS_WIDTH = 800;
+        const CANVAS_HEIGHT = 500;
+        canvas.width = CANVAS_WIDTH;
+        canvas.height = CANVAS_HEIGHT;
+
+        const TARGET_X = 200; // 判定ラインX座標 (左側ノーツ用) / 右側は CANVAS_WIDTH - 200 = 600
+
+        let gameState = 'START';
+        let score = 0;
+        let combo = 0;
+        let maxCombo = 0;
+        let highScore = parseInt(localStorage.getItem('pong_rhythm_highscore') || '0');
+        let timeLeft = 60;
+        let timerInterval = null;
+        let isFever = false;
+
+        let notes = [];
+        let particles = [];
+        let flashAlpha = 0;
+        let judgmentText = '';
+        let judgmentColor = '#22d3ee';
+        let judgmentTimer = 0;
+
+        let spawnTimer = 0;
+
+        function triggerScreenShake() {
+            mainFrame.classList.add('screen-shake');
+            setTimeout(() => { mainFrame.classList.remove('screen-shake'); }, 200);
+        }
+
+        function createParticles(x, y, color) {
+            for (let i = 0; i < 12; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = Math.random() * 5 + 2;
+                particles.push({
+                    x, y,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    size: Math.random() * 6 + 2,
+                    color,
+                    alpha: 1.0
+                });
+            }
+        }
+
+        function startGame() {
+            initAudio();
+            score = 0;
+            combo = 0;
+            maxCombo = 0;
+            timeLeft = 60;
+            isFever = false;
+            notes = [];
+            particles = [];
+            spawnTimer = 0;
+
+            scoreEl.textContent = '0';
+            comboEl.textContent = '0';
+            timerEl.textContent = timeLeft;
+            judgmentEl.textContent = '-';
+
+            timerCard.classList.remove('bg-red-600', 'animate-pulse');
+            feverBanner.classList.add('hidden');
+            mainFrame.classList.remove('fever-border');
+            mainFrame.classList.add('neon-border');
+
+            startOverlay.classList.add('hidden');
+            resultOverlay.classList.add('hidden');
+
+            gameState = 'PLAYING';
+
+            clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                if (gameState === 'PLAYING') {
+                    timeLeft--;
+                    timerEl.textContent = timeLeft;
+
+                    if (timeLeft === 10 && !isFever) {
+                        triggerFever();
+                    }
+                    if (timeLeft <= 0) {
+                        endGame();
+                    }
+                }
+            }, 1000);
+        }
+
+        function triggerFever() {
+            isFever = true;
+            playFeverSound();
+            feverBanner.classList.remove('hidden');
+            timerCard.classList.add('bg-red-600', 'animate-pulse');
+            mainFrame.classList.remove('neon-border');
+            mainFrame.classList.add('fever-border');
+        }
+
+        function endGame() {
+            gameState = 'GAMEOVER';
+            clearInterval(timerInterval);
+
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem('pong_rhythm_highscore', highScore.toString());
+            }
+
+            let rank = 'C';
+            let comment = 'もっとリズムに乗っていこう！';
+            let rankColor = 'text-cyan-300';
+
+            if (score >= 15000 && maxCombo >= 60) {
+                rank = 'S+';
+                comment = '神速のピンポンマスター！完璧なリズム感！';
+                rankColor = 'text-yellow-400 pop-text-cyber';
+            } else if (score >= 10000 && maxCombo >= 40) {
+                rank = 'S';
+                comment = '素晴らしいラリー裁きでした！';
+                rankColor = 'text-pink-400';
+            } else if (score >= 6000) {
+                rank = 'A';
+                comment = 'ノリノリの好成績！お見事！';
+                rankColor = 'text-purple-400';
+            } else if (score >= 3000) {
+                rank = 'B';
+                comment = 'なかなか良い調子でした！';
+                rankColor = 'text-cyan-400';
+            }
+
+            resultScoreEl.textContent = score.toLocaleString();
+            resultComboEl.textContent = maxCombo.toLocaleString();
+            resultRankEl.textContent = rank;
+            resultRankEl.className = `text-3xl sm:text-5xl font-black ${rankColor} mb-1 font-orbitron`;
+            resultCommentEl.textContent = comment;
+            resultHighscoreEl.textContent = highScore.toLocaleString();
+
+            resultOverlay.classList.remove('hidden');
+        }
+
+        function spawnNote() {
+            const side = Math.random() < 0.5 ? 'left' : 'right';
+            const isBomb = Math.random() < (isFever ? 0.22 : 0.15); // 15〜22%の確率で爆弾
+            const isJust = !isBomb && Math.random() < 0.3; // 30%でジャスト星付き
+
+            let startX = side === 'left' ? -40 : CANVAS_WIDTH + 40;
+            let targetX = side === 'left' ? TARGET_X : CANVAS_WIDTH - TARGET_X;
+            let speed = (isFever ? 7.5 : 5.0) + Math.random() * 1.5;
+
+            notes.push({
+                side: side,
+                x: startX,
+                targetX: targetX,
+                speed: side === 'left' ? speed : -speed,
+                isBomb: isBomb,
+                isJust: isJust,
+                hit: false
+            });
+        }
+
+        function handleInput(side) {
+            if (gameState !== 'PLAYING') return;
+
+            // 該当サイドで判定ラインに最も近いノーツを探す
+            let closestNote = null;
+            let minDst = 9999;
+
+            notes.forEach(note => {
+                if (!note.hit && note.side === side) {
+                    let dst = Math.abs(note.x - note.targetX);
+                    if (dst < minDst) {
+                        minDst = dst;
+                        closestNote = note;
+                    }
+                }
+            });
+
+            if (closestNote && minDst < 60) {
+                closestNote.hit = true;
+
+                if (closestNote.isBomb) {
+                    // 爆弾ミス！
+                    playBombSound();
+                    triggerScreenShake();
+                    combo = 0;
+                    comboEl.textContent = combo;
+                    score = Math.max(0, score - 500);
+                    scoreEl.textContent = score.toLocaleString();
+                    setJudgment('💣 爆弾爆発!!', '#ef4444');
+                    flashAlpha = 0.6;
+                } else {
+                    // 通常判定
+                    if (minDst < 12) {
+                        // ジャストガード（★ パーフェクト）
+                        playHitSound(true);
+                        combo++;
+                        if (combo > maxCombo) maxCombo = combo;
+                        comboEl.textContent = combo;
+                        score += 300 * (isFever ? 2 : 1);
+                        scoreEl.textContent = score.toLocaleString();
+                        setJudgment('★ JUST GUARD!!', '#eab308');
+                        flashAlpha = 0.3;
+                        createParticles(closestNote.x, CANVAS_HEIGHT / 2, '#eab308');
+                    } else if (minDst < 32) {
+                        // GREAT
+                        playHitSound(false);
+                        combo++;
+                        if (combo > maxCombo) maxCombo = combo;
+                        comboEl.textContent = combo;
+                        score += 150 * (isFever ? 2 : 1);
+                        scoreEl.textContent = score.toLocaleString();
+                        setJudgment('GREAT!', '#22d3ee');
+                        createParticles(closestNote.x, CANVAS_HEIGHT / 2, '#22d3ee');
+                    } else {
+                        // GOOD
+                        playHitSound(false);
+                        combo++;
+                        if (combo > maxCombo) maxCombo = combo;
+                        comboEl.textContent = combo;
+                        score += 80 * (isFever ? 2 : 1);
+                        scoreEl.textContent = score.toLocaleString();
+                        setJudgment('GOOD', '#a855f7');
+                    }
+                }
+            } else {
+                // 空振り
+                playMissSound();
+                combo = 0;
+                comboEl.textContent = combo;
+                setJudgment('MISS', '#9ca3af');
+            }
+        }
+
+        function setJudgment(text, color) {
+            judgmentText = text;
+            judgmentColor = color;
+            judgmentTimer = 20;
+            judgmentEl.textContent = text;
+            judgmentEl.style.color = color;
+        }
+
+        function gameLoop() {
+            ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+            // 背景グラデーション
+            const bgGrad = ctx.createLinearGradient(0, 0, 0, CANVAS_HEIGHT);
+            bgGrad.addColorStop(0, isFever ? '#7f1d1d' : '#1e1b4b');
+            bgGrad.addColorStop(1, '#09090b');
+            ctx.fillStyle = bgGrad;
+            ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+            // 画面全体フラッシュ効果
+            if (flashAlpha > 0) {
+                ctx.fillStyle = `rgba(255, 255, 255, ${flashAlpha})`;
+                ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+                flashAlpha -= 0.05;
+            }
+
+            // --- 判定ラインの描画 (左右) ---
+            // 左判定ライン
+            ctx.strokeStyle = '#06b6d4';
+            ctx.lineWidth = 4;
+            ctx.setLineDash([8, 6]);
+            ctx.beginPath();
+            ctx.moveTo(TARGET_X, 80);
+            ctx.lineTo(TARGET_X, CANVAS_HEIGHT - 80);
+            ctx.stroke();
+
+            // 右判定ライン
+            ctx.strokeStyle = '#ec4899';
+            ctx.beginPath();
+            ctx.moveTo(CANVAS_WIDTH - TARGET_X, 80);
+            ctx.lineTo(CANVAS_WIDTH - TARGET_X, CANVAS_HEIGHT - 80);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // 中央ネットの描画
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(CANVAS_WIDTH / 2, 40);
+            ctx.lineTo(CANVAS_WIDTH / 2, CANVAS_HEIGHT - 40);
+            ctx.stroke();
+
+            if (gameState === 'PLAYING') {
+                spawnTimer++;
+                let spawnInterval = isFever ? 18 : 28;
+                if (spawnTimer >= spawnInterval) {
+                    spawnTimer = 0;
+                    spawnNote();
+                }
+            }
+
+            // --- ノーツの更新と描画 ---
+            for (let i = notes.length - 1; i >= 0; i--) {
+                let note = notes[i];
+                if (!note.hit) {
+                    note.x += note.speed;
+
+                    // 通り過ぎた場合のミス判定
+                    if ((note.side === 'left' && note.x > note.targetX + 50) ||
+                        (note.side === 'right' && note.x < note.targetX - 50)) {
+                        if (!note.isBomb) {
+                            // 打ち逃しミス
+                            combo = 0;
+                            comboEl.textContent = combo;
+                            setJudgment('MISS', '#9ca3af');
+                        }
+                        notes.splice(i, 1);
+                        continue;
+                    }
+                }
+
+                // 描画
+                ctx.save();
+                ctx.translate(note.x, CANVAS_HEIGHT / 2);
+
+                if (note.isBomb) {
+                    // 爆弾ノーツ
+                    ctx.font = '36px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText('💣', 0, 0);
+                } else {
+                    // 通常ノーツ (ピンポン球 / スター)
+                    ctx.shadowBlur = 15;
+                    ctx.shadowColor = note.side === 'left' ? '#06b6d4' : '#ec4899';
+                    ctx.fillStyle = note.side === 'left' ? '#22d3ee' : '#f472b6';
+                    ctx.beginPath();
+                    ctx.arc(0, 0, note.isJust ? 22 : 18, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
+
+                    if (note.isJust) {
+                        ctx.font = '18px sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText('⭐', 0, 0);
+                    }
+                }
+                ctx.restore();
+            }
+
+            // パーティクル描画
+            for (let i = particles.length - 1; i >= 0; i--) {
+                let pt = particles[i];
+                pt.x += pt.vx;
+                pt.y += pt.vy;
+                pt.alpha -= 0.05;
+                if (pt.alpha <= 0) {
+                    particles.splice(i, 1);
+                    continue;
+                }
+                ctx.globalAlpha = pt.alpha;
+                ctx.fillStyle = pt.color;
+                ctx.beginPath();
+                ctx.arc(pt.x, pt.y, pt.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.globalAlpha = 1.0;
+            }
+
+            // 判定テキストのタイマー減算
+            if (judgmentTimer > 0) {
+                judgmentTimer--;
+            }
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        // --- 入力イベントリスナー ---
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft' || e.key === 'Left') {
+                handleInput('left');
+                e.preventDefault();
+            }
+            if (e.key === 'ArrowRight' || e.key === 'Right') {
+                handleInput('right');
+                e.preventDefault();
+            }
+        });
+
+        const setupTouchButton = (btn, side) => {
+            const handleAction = (e) => {
+                e.preventDefault();
+                handleInput(side);
+            };
+            btn.addEventListener('touchstart', handleAction, { passive: false });
+            btn.addEventListener('mousedown', handleAction);
+        };
+
+        setupTouchButton(btnLeft, 'left');
+        setupTouchButton(btnRight, 'right');
+
+        startBtn.addEventListener('click', startGame);
+        restartBtn.addEventListener('click', startGame);
+
+        requestAnimationFrame(gameLoop);
+    </script>
+</body>
+</html>

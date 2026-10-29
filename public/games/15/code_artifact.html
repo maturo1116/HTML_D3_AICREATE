@@ -1,0 +1,968 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>無限ガチャガチャドリーム</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        * {
+            font-family: 'M PLUS Rounded 1c', sans-serif;
+            user-select: none;
+        }
+
+        /* SSR / Rare Animations */
+        @keyframes rainbow-border {
+            0% { border-color: #ff0000; box-shadow: 0 0 20px #ff0000; }
+            20% { border-color: #ffff00; box-shadow: 0 0 20px #ffff00; }
+            40% { border-color: #00ff00; box-shadow: 0 0 20px #00ff00; }
+            60% { border-color: #00ffff; box-shadow: 0 0 20px #00ffff; }
+            80% { border-color: #ff00ff; box-shadow: 0 0 20px #ff00ff; }
+            100% { border-color: #ff0000; box-shadow: 0 0 20px #ff0000; }
+        }
+
+        @keyframes rainbow-bg {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .ssr-rainbow {
+            background: linear-gradient(-45deg, #ff0055, #ffdd00, #00ffaa, #00aaff, #ff00ff);
+            background-size: 300% 300%;
+            animation: rainbow-bg 2s ease infinite;
+        }
+
+        .ssr-card {
+            animation: rainbow-border 1.5s infinite linear;
+        }
+
+        /* Secret Carrot Rainbow Effect */
+        @keyframes carrot-glow {
+            0% { box-shadow: 0 0 30px #ff6600, 0 0 60px #ffcc00; border-color: #ffaa00; }
+            50% { box-shadow: 0 0 50px #ff0055, 0 0 100px #ffaa00; border-color: #ffffff; }
+            100% { box-shadow: 0 0 30px #ff6600, 0 0 60px #ffcc00; border-color: #ffaa00; }
+        }
+
+        .secret-card {
+            animation: carrot-glow 1s infinite alternate;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            20% { transform: translate(-8px, 5px) rotate(-5deg); }
+            40% { transform: translate(8px, -5px) rotate(5deg); }
+            60% { transform: translate(-5px, 8px) rotate(-3deg); }
+            80% { transform: translate(5px, -3px) rotate(3deg); }
+        }
+
+        .shake-extreme {
+            animation: shake 0.15s ease-in-out infinite;
+        }
+
+        @keyframes handle-turn {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .turning {
+            animation: handle-turn 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        @keyframes flash-cutin {
+            0% { opacity: 0; transform: scale(2) rotate(-10deg); }
+            50% { opacity: 1; transform: scale(1) rotate(0deg); }
+            100% { opacity: 0; transform: scale(0.8) rotate(5deg); }
+        }
+
+        .cutin-active {
+            animation: flash-cutin 1.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
+        /* Canvas Overlay */
+        #fx-canvas {
+            pointer-events: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 50;
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-white min-h-screen flex flex-col items-center justify-between overflow-x-hidden relative">
+
+    <canvas id="fx-canvas"></canvas>
+
+    <!-- Header / Stats Bar -->
+    <header class="w-full max-w-4xl p-4 flex justify-between items-center bg-slate-800/80 backdrop-blur-md rounded-b-2xl border-b border-slate-700 shadow-lg z-10 mt-0">
+        <div class="flex items-center gap-3">
+            <div class="bg-gradient-to-tr from-amber-500 to-yellow-300 p-3 rounded-2xl shadow-md text-slate-900">
+                <i class="fa-solid font-black fa-box-open text-2xl"></i>
+            </div>
+            <div>
+                <h1 class="font-black text-xl md:text-2xl tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-amber-400 to-orange-500">
+                    無限ガチャガチャ
+                </h1>
+                <p class="text-xs text-slate-400">昇格・リーチ・神ガチャモード搭載！</p>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-4">
+            <div class="bg-slate-900/90 px-4 py-2 rounded-xl border border-slate-700 text-right">
+                <div class="text-xs text-slate-400">総回転数</div>
+                <div id="total-count" class="font-black text-xl text-amber-400">0 回</div>
+            </div>
+            <button id="btn-collection" class="bg-indigo-600 hover:bg-indigo-500 active:scale-95 transition-all text-white font-bold px-4 py-2.5 rounded-xl flex items-center gap-2 shadow-lg border border-indigo-400">
+                <i class="fa-solid fa-book-open"></i>
+                <span class="hidden sm:inline">図鑑</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Game Container -->
+    <main class="w-full max-w-4xl flex-1 flex flex-col md:flex-row items-center justify-center gap-8 p-4 z-10 my-auto">
+        
+        <!-- Left: Gacha Machine Visual -->
+        <div class="relative w-72 sm:w-80 flex flex-col items-center">
+            <!-- Machine Top Decor -->
+            <div class="w-full bg-gradient-to-r from-red-600 via-pink-500 to-red-600 h-8 rounded-t-3xl border-b-2 border-red-800 shadow-md"></div>
+
+            <!-- Capsule Chamber (Glass) -->
+            <div class="relative w-full h-64 bg-slate-800/60 backdrop-blur-md rounded-b-2xl border-4 border-slate-700 flex items-center justify-center overflow-hidden shadow-2xl">
+                <div class="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent pointer-events-none"></div>
+                
+                <!-- Inner Capsules Floating Visual -->
+                <div id="capsule-chamber" class="w-full h-full relative p-4 flex flex-wrap justify-center items-center gap-2">
+                    <!-- Capsules generated via JS -->
+                </div>
+
+                <!-- Glow/Flash Light inside Chamber -->
+                <div id="chamber-glow" class="absolute inset-0 opacity-0 transition-opacity duration-300 pointer-events-none"></div>
+            </div>
+
+            <!-- Machine Base & Handle -->
+            <div class="w-full bg-slate-800 border-4 border-t-0 border-slate-700 rounded-b-3xl p-4 flex flex-col items-center shadow-2xl relative">
+                <!-- Handle Mechanism -->
+                <div class="relative my-2">
+                    <div class="w-20 h-20 rounded-full bg-slate-700 border-4 border-slate-600 flex items-center justify-center shadow-inner">
+                        <button id="gacha-handle" class="w-16 h-16 rounded-full bg-gradient-to-br from-amber-400 to-orange-600 border-2 border-amber-200 shadow-lg flex items-center justify-center active:scale-95 transition-transform cursor-pointer">
+                            <div class="w-12 h-3 bg-white/80 rounded-full shadow-md transform -rotate-45 pointer-events-none"></div>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Exit Slot -->
+                <div class="w-28 h-12 bg-slate-900 rounded-b-lg border-2 border-slate-700 flex items-end justify-center pb-1 shadow-inner relative overflow-hidden">
+                    <div id="dispensed-capsule" class="w-8 h-8 rounded-full hidden transform translate-y-10 transition-all duration-500 shadow-lg"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right: Action Buttons & Quick Stats -->
+        <div class="flex flex-col gap-4 w-full max-w-sm">
+            <!-- Mode Selector / Rate Display -->
+            <div class="bg-slate-800/80 p-4 rounded-2xl border border-slate-700 shadow-xl space-y-3">
+                <!-- Toggle Mode Tabs -->
+                <div class="flex bg-slate-900/80 p-1 rounded-xl border border-slate-700">
+                    <button id="btn-mode-normal" class="flex-1 py-1.5 text-xs font-black rounded-lg bg-amber-500 text-slate-950 shadow transition-all">
+                        通常ガチャ
+                    </button>
+                    <button id="btn-mode-god" class="flex-1 py-1.5 text-xs font-black rounded-lg text-slate-400 hover:text-white transition-all flex items-center justify-center gap-1">
+                        <i class="fa-solid fa-bolt text-amber-400"></i> 神ガチャ (20%)
+                    </button>
+                </div>
+
+                <h2 class="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center justify-between">
+                    <span><i class="fa-solid fa-sliders text-amber-400"></i> 排出確率一覧</span>
+                    <span id="rate-mode-label" class="text-amber-400 font-black">【通常モード】</span>
+                </h2>
+                <div class="grid grid-cols-2 gap-2 text-xs">
+                    <div class="bg-gradient-to-r from-orange-900/60 to-amber-900/60 p-2 rounded-lg border border-orange-500/50 flex justify-between items-center col-span-2">
+                        <span class="font-black text-amber-300 flex items-center gap-1">🥕 伝説のシークレット</span>
+                        <span id="rate-secret" class="font-bold text-amber-300">0.01%</span>
+                    </div>
+                    <div class="bg-gradient-to-r from-red-900/50 to-pink-900/50 p-2 rounded-lg border border-red-500/40 flex justify-between items-center">
+                        <span class="font-black text-pink-400">SSR (超神級)</span>
+                        <span id="rate-ssr" class="font-bold text-slate-300">1.0%</span>
+                    </div>
+                    <div class="bg-gradient-to-r from-amber-900/50 to-yellow-900/50 p-2 rounded-lg border border-amber-500/40 flex justify-between items-center">
+                        <span class="font-black text-amber-400">SR (超激レア)</span>
+                        <span id="rate-sr" class="font-bold text-slate-300">4.0%</span>
+                    </div>
+                    <div class="bg-gradient-to-r from-purple-900/50 to-indigo-900/50 p-2 rounded-lg border border-purple-500/40 flex justify-between items-center">
+                        <span class="font-black text-purple-300">R (激レア)</span>
+                        <span id="rate-r" class="font-bold text-slate-300">20.0%</span>
+                    </div>
+                    <div class="bg-gradient-to-r from-slate-700/50 to-slate-800/50 p-2 rounded-lg border border-slate-600/40 flex justify-between items-center">
+                        <span class="font-black text-slate-300">S (ノーマル)</span>
+                        <span id="rate-s" class="font-bold text-slate-300">74.99%</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Gacha Buttons -->
+            <div class="flex flex-col gap-3">
+                <button id="btn-pull-1" class="w-full py-4 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 active:scale-95 transition-all font-black text-xl shadow-lg shadow-amber-500/20 border-b-4 border-amber-700 flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-rotate-right"></i> 1回まわす！
+                </button>
+                <div class="grid grid-cols-2 gap-3">
+                    <button id="btn-pull-10" class="py-3 rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 active:scale-95 transition-all font-bold text-lg shadow-lg shadow-indigo-500/20 border-b-4 border-indigo-800 flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-bolt"></i> 10連ガチャ
+                    </button>
+                    <button id="btn-pull-100" class="py-3 rounded-2xl bg-gradient-to-r from-pink-600 to-rose-600 hover:from-pink-500 hover:to-rose-500 active:scale-95 transition-all font-bold text-lg shadow-lg shadow-pink-500/20 border-b-4 border-pink-800 flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-fire-flame-curved"></i> 100連ガチャ
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="p-4 text-center text-xs text-slate-500 z-10">
+        無限ガチャガチャドリーム &copy; 2026 - 完全無料・無制限
+    </footer>
+
+    <!-- SSR Cut-In Overlay -->
+    <div id="cutin-overlay" class="fixed inset-0 bg-black/90 z-50 hidden flex-col items-center justify-center overflow-hidden pointer-events-none">
+        <div id="cutin-bg" class="absolute inset-0 opacity-80"></div>
+        <div id="cutin-text" class="text-center z-10">
+            <h2 id="cutin-title" class="text-6xl sm:text-8xl font-black italic tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-yellow-200 via-amber-300 to-red-500 drop-shadow-[0_10px_20px_rgba(255,215,0,0.8)] uppercase">
+                神・超・激・強！！
+            </h2>
+            <p id="cutin-sub" class="text-2xl sm:text-4xl font-bold text-white tracking-widest mt-4 drop-shadow-md">
+                SSR 確定超極致演出
+            </p>
+        </div>
+    </div>
+
+    <!-- Upgrade / Reach Tension Overlay -->
+    <div id="tension-overlay" class="fixed inset-0 bg-black/80 z-50 hidden flex-col items-center justify-center pointer-events-none">
+        <div id="tension-text" class="text-amber-400 text-4xl sm:text-6xl font-black tracking-widest animate-ping">
+            昇 格 確 变 ! ?
+        </div>
+    </div>
+
+    <!-- Single Result Modal -->
+    <div id="result-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-40 hidden flex items-center justify-center p-4">
+        <div id="result-card" class="bg-slate-800 border-4 border-slate-700 rounded-3xl p-6 sm:p-8 max-w-sm w-full flex flex-col items-center text-center shadow-2xl relative transform transition-all scale-100 opacity-100">
+            <span id="res-rank-badge" class="px-4 py-1.5 rounded-full font-black text-sm tracking-widest uppercase mb-4 shadow-md">
+                S RANK
+            </span>
+
+            <div id="res-icon-container" class="w-32 h-32 rounded-2xl bg-slate-900 border-2 border-slate-700 flex items-center justify-center my-4 shadow-inner relative overflow-hidden">
+                <i id="res-icon" class="fa-solid fa-star text-6xl text-amber-400"></i>
+            </div>
+
+            <h3 id="res-title" class="text-2xl font-black text-white mb-2">伝説のドラゴンsword</h3>
+            <p id="res-desc" class="text-sm text-slate-300 mb-6">神々の時代から受け継がれし究極の剣。一振りが天を裂く。</p>
+
+            <button id="btn-close-result" class="w-full py-3 rounded-xl bg-slate-700 hover:bg-slate-600 font-bold text-white transition-all shadow-md active:scale-95 cursor-pointer">
+                次へ進む
+            </button>
+        </div>
+    </div>
+
+    <!-- Multi Result Modal (10 / 100 Pulls) -->
+    <div id="multi-result-modal" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-40 hidden flex items-center justify-center p-4">
+        <div class="bg-slate-800/90 border-2 border-slate-700 rounded-3xl p-6 max-w-2xl w-full flex flex-col max-h-[85vh] shadow-2xl">
+            <div class="flex justify-between items-center mb-4 pb-2 border-b border-slate-700">
+                <h3 class="text-xl font-black text-amber-400 flex items-center gap-2">
+                    <i class="fa-solid fa-boxes-packing"></i> ガチャ獲得結果一覧
+                </h3>
+                <span id="multi-count-label" class="text-sm font-bold text-slate-400">10連結果</span>
+            </div>
+
+            <div id="multi-grid" class="grid grid-cols-2 sm:grid-cols-5 gap-3 overflow-y-auto p-2 flex-1">
+                <!-- Cards appended via JS -->
+            </div>
+
+            <button id="btn-close-multi" class="mt-4 w-full py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 font-black text-slate-900 transition-all shadow-lg active:scale-95 cursor-pointer">
+                確認して戻る
+            </button>
+        </div>
+    </div>
+
+    <!-- Collection / Picture Book Modal -->
+    <div id="collection-modal" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-40 hidden flex items-center justify-center p-4">
+        <div class="bg-slate-800 border-2 border-slate-700 rounded-3xl p-6 max-w-3xl w-full flex flex-col max-h-[85vh] shadow-2xl">
+            <div class="flex justify-between items-center mb-4 pb-2 border-b border-slate-700">
+                <div>
+                    <h3 class="text-xl font-black text-white flex items-center gap-2">
+                        <i class="fa-solid fa-book-open text-indigo-400"></i> カプセル図鑑
+                    </h3>
+                    <p id="collection-stats" class="text-xs text-slate-400">コンプリート率: 0% (0/0)</p>
+                </div>
+                <button id="btn-close-collection" class="w-10 h-10 rounded-full bg-slate-700 hover:bg-slate-600 text-slate-300 font-bold flex items-center justify-center transition-all cursor-pointer">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <!-- Filter Tabs -->
+            <div id="filter-container" class="flex gap-2 mb-4 overflow-x-auto pb-1">
+                <button class="col-filter-btn px-3 py-1 rounded-lg text-xs font-bold bg-indigo-600 text-white" data-rank="ALL">すべて</button>
+                <button class="col-filter-btn px-3 py-1 rounded-lg text-xs font-bold bg-slate-700 text-slate-300" data-rank="SECRET">🥕</button>
+                <button class="col-filter-btn px-3 py-1 rounded-lg text-xs font-bold bg-slate-700 text-slate-300" data-rank="SSR">SSR</button>
+                <button class="col-filter-btn px-3 py-1 rounded-lg text-xs font-bold bg-slate-700 text-slate-300" data-rank="SR">SR</button>
+                <button class="col-filter-btn px-3 py-1 rounded-lg text-xs font-bold bg-slate-700 text-slate-300" data-rank="R">R</button>
+                <button class="col-filter-btn px-3 py-1 rounded-lg text-xs font-bold bg-slate-700 text-slate-300" data-rank="S">S</button>
+            </div>
+
+            <!-- Collection Grid -->
+            <div id="collection-grid" class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-3 overflow-y-auto p-2 flex-1">
+                <!-- Items populated via JS -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Web Audio API Sound Synthesizer
+        class AudioEngine {
+            constructor() {
+                this.ctx = null;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+            }
+
+            playGachaTurn() {
+                this.init();
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(150, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(60, this.ctx.currentTime + 0.3);
+                gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.3);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.3);
+            }
+
+            playCapsuleDrop() {
+                this.init();
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(300, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(100, this.ctx.currentTime + 0.2);
+                gain.gain.setValueAtTime(0.4, this.ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.2);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.2);
+            }
+
+            playCutinSound() {
+                this.init();
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(80, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(400, this.ctx.currentTime + 0.4);
+                osc.frequency.exponentialRampToValueAtTime(50, this.ctx.currentTime + 0.8);
+                gain.gain.setValueAtTime(0.5, this.ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.8);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.8);
+            }
+
+            playCarrotSound() {
+                this.init();
+                const now = this.ctx.currentTime;
+                [523.25, 659.25, 783.99, 1046.50, 1318.51, 1567.98, 2093.00].forEach((freq, idx) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq, now + idx * 0.05);
+                    gain.gain.setValueAtTime(0.4, now + idx * 0.05);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.05 + 0.8);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(now + idx * 0.05);
+                    osc.stop(now + idx * 0.05 + 0.8);
+                });
+            }
+
+            playTensionSound() {
+                this.init();
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(150, now);
+                osc.frequency.exponentialRampToValueAtTime(800, now + 0.4);
+                gain.gain.setValueAtTime(0.3, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.4);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.4);
+            }
+
+            playFanfare(rank) {
+                this.init();
+                const now = this.ctx.currentTime;
+                
+                if (rank === 'SSR') {
+                    const notes = [523.25, 659.25, 783.99, 1046.50, 1318.51, 1567.98];
+                    notes.forEach((freq, idx) => {
+                        const osc = this.ctx.createOscillator();
+                        const gain = this.ctx.createGain();
+                        osc.type = 'triangle';
+                        osc.frequency.setValueAtTime(freq, now + idx * 0.08);
+                        gain.gain.setValueAtTime(0.3, now + idx * 0.08);
+                        gain.gain.linearRampToValueAtTime(0.01, now + idx * 0.08 + 0.4);
+                        osc.connect(gain);
+                        gain.connect(this.ctx.destination);
+                        osc.start(now + idx * 0.08);
+                        osc.stop(now + idx * 0.08 + 0.4);
+                    });
+                } else if (rank === 'SR') {
+                    const notes = [440, 554.37, 659.25, 880];
+                    notes.forEach((freq, idx) => {
+                        const osc = this.ctx.createOscillator();
+                        const gain = this.ctx.createGain();
+                        osc.type = 'sine';
+                        osc.frequency.setValueAtTime(freq, now + idx * 0.1);
+                        gain.gain.setValueAtTime(0.3, now + idx * 0.1);
+                        gain.gain.linearRampToValueAtTime(0.01, now + idx * 0.1 + 0.3);
+                        osc.connect(gain);
+                        gain.connect(this.ctx.destination);
+                        osc.start(now + idx * 0.1);
+                        osc.stop(now + idx * 0.1 + 0.3);
+                    });
+                } else {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(440, now);
+                    osc.frequency.setValueAtTime(554.37, now + 0.1);
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.linearRampToValueAtTime(0.01, now + 0.25);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.25);
+                }
+            }
+        }
+
+        const audio = new AudioEngine();
+
+        // Gacha Item Database
+        const GACHA_ITEMS = [
+            // SECRET
+            { id: 'sec_1', name: '伝説の神聖黄金にんじん', rank: 'SECRET', icon: 'fa-carrot', color: 'text-amber-400', desc: '全宇宙のガチャの神が宿りし伝説の黄金にんじん。持つ者に無限の幸運を与える。' },
+
+            // SSR
+            { id: 'ssr_1', name: '全知全能の覇天神剣', rank: 'SSR', icon: 'fa-wand-magic-sparkles', color: 'text-amber-300', desc: '世界を再創生する絶対の力が宿る終焉の剣。' },
+            { id: 'ssr_2', name: '銀河統括龍の秘宝球', rank: 'SSR', icon: 'fa-dragon', color: 'text-rose-400', desc: '宇宙の全星々を統率する真なる竜の宝玉。' },
+            { id: 'ssr_3', name: '時空を超える神翼アーマー', rank: 'SSR', icon: 'fa-shield-halved', color: 'text-cyan-300', desc: 'あらゆる攻撃を無効化し、時空さえ超越する防具。' },
+            { id: 'ssr_4', name: '滅世の究極ブラックホール', rank: 'SSR', icon: 'fa-meteor', color: 'text-purple-400', desc: '全ての物質と概念を飲み込む漆黒の特異点。' },
+
+            // SR
+            { id: 'sr_1', name: '漆黒の魔導書', rank: 'SR', icon: 'fa-book-skull', color: 'text-purple-400', desc: '禁忌とされた古代魔法が記された怪しい書物。' },
+            { id: 'sr_2', name: '聖なる天界のリング', rank: 'SR', icon: 'fa-ring', color: 'text-yellow-300', desc: '装着する者に祝福と絶え間ない幸運を与える。' },
+            { id: 'sr_3', name: '鳳凰の灼熱ブレード', rank: 'SR', icon: 'fa-fire', color: 'text-orange-400', desc: '不死鳥の炎を纏い、全てを焼き尽くす名刀。' },
+            { id: 'sr_4', name: '幻影の影騎士クラウン', rank: 'SR', icon: 'fa-crown', color: 'text-amber-400', desc: '影の王国を支配した暗黒王の証。' },
+
+            // R
+            { id: 'r_1', name: '精密メカニックギア', rank: 'R', icon: 'fa-gear', color: 'text-blue-400', desc: '高度な古代テクノロジーで作られた回転歯車。' },
+            { id: 'r_2', name: 'クリスタルペンダント', rank: 'R', icon: 'fa-gem', color: 'text-emerald-400', desc: '美しく光り輝く天然鉱石の首飾り。' },
+            { id: 'r_3', name: '疾風のニンジャクナイ', rank: 'R', icon: 'fa-compass-drafting', color: 'text-slate-300', desc: '風のように鋭く獲物を貫く忍者の武器。' },
+            { id: 'r_4', name: 'ハイポーション', rank: 'R', icon: 'fa-flask', color: 'text-teal-300', desc: '傷を瞬時に癒やす高濃度の回復薬。' },
+            { id: 'r_5', name: '黄金のまねき猫', rank: 'R', icon: 'fa-cat', color: 'text-yellow-400', desc: '金運を呼び込むとされるめでたい置物。' },
+
+            // S
+            { id: 's_1', name: '普通のひのきのぼう', rank: 'S', icon: 'fa-staff', color: 'text-amber-700', desc: 'そのへんに落ちていそうな普通の木の棒。' },
+            { id: 's_2', name: '謎のたわし', rank: 'S', icon: 'fa-brush', color: 'text-amber-800', desc: '頑固な汚れも綺麗に落とせるかもしれない。' },
+            { id: 's_3', name: '石ころ', rank: 'S', icon: 'fa-cubes', color: 'text-slate-400', desc: '川原によく落ちているどこにでもある石。' },
+            { id: 's_4', name: '空き缶', rank: 'S', icon: 'fa-box', color: 'text-slate-500', desc: 'リサイクルに出すと地球に優しい。' },
+            { id: 's_5', name: 'おにぎり（うめ）', rank: 'S', icon: 'fa-cookie', color: 'text-amber-200', desc: '小腹が空いた時にぴったりの素朴な味。' },
+            { id: 's_6', name: 'ラバーダック', rank: 'S', icon: 'fa-duck', color: 'text-yellow-300', desc: 'お風呂に浮かべるとちょっと癒やされるアヒル。' }
+        ];
+
+        let state = {
+            totalPulls: 0,
+            inventory: {},
+            currentFilter: 'ALL',
+            mode: 'NORMAL',
+            isSpinning: false
+        };
+
+        const canvas = document.getElementById('fx-canvas');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        function triggerConfetti(colors, count = 100) {
+            for (let i = 0; i < count; i++) {
+                particles.push({
+                    x: canvas.width / 2,
+                    y: canvas.height / 2,
+                    vx: (Math.random() - 0.5) * 15,
+                    vy: (Math.random() - 0.5) * 15 - 5,
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    size: Math.random() * 8 + 4,
+                    rotation: Math.random() * 360,
+                    vRot: (Math.random() - 0.5) * 10,
+                    life: 1.0,
+                    decay: Math.random() * 0.015 + 0.005
+                });
+            }
+        }
+
+        function updateParticles() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            particles.forEach((p, index) => {
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vy += 0.2; // Gravity
+                p.rotation += p.vRot;
+                p.life -= p.decay;
+
+                ctx.save();
+                ctx.translate(p.x, p.y);
+                ctx.rotate((p.rotation * Math.PI) / 180);
+                ctx.globalAlpha = Math.max(0, p.life);
+                ctx.fillStyle = p.color;
+                ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+                ctx.restore();
+
+                if (p.life <= 0) {
+                    particles.splice(index, 1);
+                }
+            });
+            requestAnimationFrame(updateParticles);
+        }
+        requestAnimationFrame(updateParticles);
+
+        function populateChamber() {
+            const chamber = document.getElementById('capsule-chamber');
+            chamber.innerHTML = '';
+            const bgColors = ['bg-red-500', 'bg-blue-500', 'bg-yellow-400', 'bg-green-500', 'bg-purple-500', 'bg-pink-500'];
+            for (let i = 0; i < 20; i++) {
+                const cap = document.createElement('div');
+                const color = bgColors[Math.floor(Math.random() * bgColors.length)];
+                cap.className = `w-8 h-8 rounded-full ${color} border-2 border-white/60 shadow-md opacity-90 transform hover:scale-110 transition-transform`;
+                chamber.appendChild(cap);
+            }
+        }
+
+        function getRandomItem() {
+            const rand = Math.random() * 100;
+            let targetRank = 'S';
+
+            if (state.mode === 'GOD') {
+                if (rand < 1.0) targetRank = 'SECRET';
+                else if (rand < 20.0) targetRank = 'SSR';
+                else if (rand < 50.0) targetRank = 'SR';
+                else if (rand < 80.0) targetRank = 'R';
+                else targetRank = 'S';
+            } else {
+                if (rand < 0.01) targetRank = 'SECRET';
+                else if (rand < 1.01) targetRank = 'SSR';
+                else if (rand < 5.01) targetRank = 'SR';
+                else if (rand < 25.01) targetRank = 'R';
+                else targetRank = 'S';
+            }
+
+            const candidates = GACHA_ITEMS.filter(item => item.rank === targetRank);
+            const selected = candidates[Math.floor(Math.random() * candidates.length)];
+            
+            state.totalPulls++;
+            state.inventory[selected.id] = (state.inventory[selected.id] || 0) + 1;
+            
+            document.getElementById('total-count').textContent = `${state.totalPulls} 回`;
+            return selected;
+        }
+
+        async function playGachaAnimation(highestRank) {
+            const handle = document.getElementById('gacha-handle');
+            const chamberGlow = document.getElementById('chamber-glow');
+            const dispensedCapsule = document.getElementById('dispensed-capsule');
+            const tensionOverlay = document.getElementById('tension-overlay');
+
+            // Turn Handle
+            audio.playGachaTurn();
+            handle.classList.add('turning');
+            await new Promise(r => setTimeout(r, 600));
+            handle.classList.remove('turning');
+
+            // Pre-reveal tension animation (50% chance for SR or higher)
+            let isUpgraded = false;
+            if ((highestRank === 'SSR' || highestRank === 'SECRET') && Math.random() < 0.6) {
+                tensionOverlay.classList.remove('hidden');
+                tensionOverlay.classList.add('flex');
+                audio.playTensionSound();
+                document.body.classList.add('shake-extreme');
+                await new Promise(r => setTimeout(r, 500));
+                document.body.classList.remove('shake-extreme');
+                tensionOverlay.classList.remove('flex');
+                tensionOverlay.classList.add('hidden');
+                isUpgraded = true;
+            }
+
+            // Flash effect based on highest rank
+            if (highestRank === 'SECRET') {
+                chamberGlow.className = "absolute inset-0 bg-gradient-to-r from-orange-500 via-amber-300 to-yellow-500 opacity-90 pointer-events-none animate-pulse";
+            } else if (highestRank === 'SSR') {
+                chamberGlow.className = "absolute inset-0 ssr-rainbow opacity-80 pointer-events-none";
+            } else if (highestRank === 'SR') {
+                chamberGlow.className = "absolute inset-0 bg-amber-400 opacity-60 pointer-events-none";
+            } else {
+                chamberGlow.className = "absolute inset-0 bg-blue-400 opacity-30 pointer-events-none";
+            }
+            await new Promise(r => setTimeout(r, 200));
+            chamberGlow.className = "absolute inset-0 opacity-0 transition-opacity duration-300 pointer-events-none";
+
+            // Dispense Capsule
+            audio.playCapsuleDrop();
+            dispensedCapsule.classList.remove('hidden');
+            let capColor = 'bg-blue-400';
+            if (highestRank === 'SECRET') capColor = 'bg-gradient-to-r from-orange-500 to-yellow-300 shadow-[0_0_20px_#ffaa00]';
+            else if (highestRank === 'SSR') capColor = 'bg-gradient-to-r from-yellow-300 via-pink-500 to-purple-500 shadow-[0_0_15px_#ff00ff]';
+            else if (highestRank === 'SR') capColor = 'bg-amber-400';
+
+            dispensedCapsule.className = `w-8 h-8 rounded-full ${capColor} border-2 border-white transform translate-y-0 transition-all duration-300 shadow-lg`;
+            await new Promise(r => setTimeout(r, 400));
+
+            // SECRET Cutin
+            if (highestRank === 'SECRET') {
+                audio.playCarrotSound();
+                const cutin = document.getElementById('cutin-overlay');
+                const cutinBg = document.getElementById('cutin-bg');
+                const cutinTitle = document.getElementById('cutin-title');
+                const cutinSub = document.getElementById('cutin-sub');
+
+                cutinBg.className = 'absolute inset-0 bg-gradient-to-tr from-orange-600 via-yellow-400 to-amber-500 opacity-95 animate-pulse';
+                cutinTitle.innerHTML = '🥕 降 臨 🥕';
+                cutinTitle.className = 'text-7xl sm:text-9xl font-black italic tracking-tighter text-yellow-100 drop-shadow-[0_10px_30px_rgba(255,100,0,1)] uppercase animate-bounce';
+                cutinSub.textContent = '【超奇跡】伝説のシークレットにんじん排出！';
+
+                cutin.classList.remove('hidden');
+                cutin.classList.add('flex', 'cutin-active');
+                document.body.classList.add('shake-extreme');
+                triggerConfetti(['#ff9900', '#ffcc00', '#ff0055', '#ffffff'], 200);
+
+                await new Promise(r => setTimeout(r, 1500));
+                document.body.classList.remove('shake-extreme');
+                cutin.classList.remove('cutin-active', 'flex');
+                cutin.classList.add('hidden');
+            } 
+            // SSR Cutin
+            else if (highestRank === 'SSR') {
+                audio.playCutinSound();
+                const cutin = document.getElementById('cutin-overlay');
+                const cutinBg = document.getElementById('cutin-bg');
+                const cutinTitle = document.getElementById('cutin-title');
+                const cutinSub = document.getElementById('cutin-sub');
+
+                cutinBg.className = 'absolute inset-0 ssr-rainbow opacity-90';
+                cutinTitle.textContent = '神・超・激・強！！';
+                cutinTitle.className = 'text-6xl sm:text-8xl font-black italic tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-yellow-200 via-amber-300 to-red-500 drop-shadow-[0_10px_20px_rgba(255,215,0,0.8)] uppercase';
+                cutinSub.textContent = isUpgraded ? '昇格確定！SSR絶頂演出' : 'SSR 確定超極致演出';
+
+                cutin.classList.remove('hidden');
+                cutin.classList.add('flex', 'cutin-active');
+                document.body.classList.add('shake-extreme');
+                triggerConfetti(['#ff0055', '#ffdd00', '#00ffaa', '#00aaff', '#ff00ff'], 120);
+
+                await new Promise(r => setTimeout(r, 1200));
+                document.body.classList.remove('shake-extreme');
+                cutin.classList.remove('cutin-active', 'flex');
+                cutin.classList.add('hidden');
+            }
+
+            dispensedCapsule.classList.add('hidden');
+        }
+
+        function showSingleResult(item) {
+            if (item.rank === 'SECRET') audio.playCarrotSound();
+            else audio.playFanfare(item.rank);
+
+            const modal = document.getElementById('result-modal');
+            const card = document.getElementById('result-card');
+            const badge = document.getElementById('res-rank-badge');
+            const icon = document.getElementById('res-icon');
+            const title = document.getElementById('res-title');
+            const desc = document.getElementById('res-desc');
+            const iconBox = document.getElementById('res-icon-container');
+
+            card.className = "bg-slate-800 border-4 rounded-3xl p-6 sm:p-8 max-w-sm w-full flex flex-col items-center text-center shadow-2xl relative transform transition-all scale-100 opacity-100";
+
+            if (item.rank === 'SECRET') {
+                card.classList.add('secret-card', 'border-amber-400', 'bg-slate-900');
+                badge.className = "px-4 py-1.5 rounded-full font-black text-sm tracking-widest uppercase mb-4 shadow-md bg-gradient-to-r from-orange-500 to-amber-300 text-slate-950 animate-bounce";
+                iconBox.className = "w-32 h-32 rounded-2xl bg-slate-950 border-2 border-amber-400 flex items-center justify-center my-4 shadow-[0_0_30px_rgba(255,170,0,0.8)] relative overflow-hidden";
+                triggerConfetti(['#ffaa00', '#ff0055', '#ffffff', '#ffff00'], 100);
+            } else if (item.rank === 'SSR') {
+                card.classList.add('ssr-card', 'border-amber-400');
+                badge.className = "px-4 py-1.5 rounded-full font-black text-sm tracking-widest uppercase mb-4 shadow-md ssr-rainbow text-white";
+                iconBox.className = "w-32 h-32 rounded-2xl bg-slate-900 border-2 border-amber-400 flex items-center justify-center my-4 shadow-[0_0_20px_rgba(251,191,36,0.5)] relative overflow-hidden";
+                triggerConfetti(['#ffd700', '#ff0055', '#00ffff'], 60);
+            } else if (item.rank === 'SR') {
+                card.classList.add('border-amber-500');
+                badge.className = "px-4 py-1.5 rounded-full font-black text-sm tracking-widest uppercase mb-4 shadow-md bg-amber-500 text-slate-950";
+                iconBox.className = "w-32 h-32 rounded-2xl bg-slate-900 border-2 border-amber-500 flex items-center justify-center my-4 shadow-inner relative overflow-hidden";
+            } else if (item.rank === 'R') {
+                card.classList.add('border-purple-500');
+                badge.className = "px-4 py-1.5 rounded-full font-black text-sm tracking-widest uppercase mb-4 shadow-md bg-purple-600 text-white";
+                iconBox.className = "w-32 h-32 rounded-2xl bg-slate-900 border-2 border-purple-500 flex items-center justify-center my-4 shadow-inner relative overflow-hidden";
+            } else {
+                card.classList.add('border-slate-600');
+                badge.className = "px-4 py-1.5 rounded-full font-black text-sm tracking-widest uppercase mb-4 shadow-md bg-slate-600 text-slate-200";
+                iconBox.className = "w-32 h-32 rounded-2xl bg-slate-900 border-2 border-slate-700 flex items-center justify-center my-4 shadow-inner relative overflow-hidden";
+            }
+
+            badge.textContent = item.rank === 'SECRET' ? '🥕 LEGEND SECRET' : `${item.rank} RANK`;
+            icon.className = `fa-solid ${item.icon} text-6xl ${item.color}`;
+            title.textContent = item.name;
+            desc.textContent = item.desc;
+
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function showMultiResult(items) {
+            const hasSecret = items.some(i => i.rank === 'SECRET');
+            const hasSSR = items.some(i => i.rank === 'SSR');
+            const hasSR = items.some(i => i.rank === 'SR');
+            
+            if (hasSecret) audio.playCarrotSound();
+            else audio.playFanfare(hasSSR ? 'SSR' : hasSR ? 'SR' : 'S');
+
+            const modal = document.getElementById('multi-result-modal');
+            const grid = document.getElementById('multi-grid');
+            const label = document.getElementById('multi-count-label');
+
+            label.textContent = `${items.length}連ガチャ結果`;
+            grid.innerHTML = '';
+
+            items.forEach(item => {
+                const card = document.createElement('div');
+                let borderClass = 'border-slate-700 bg-slate-900/80';
+                let rankBadge = 'bg-slate-600 text-slate-200';
+
+                if (item.rank === 'SECRET') {
+                    borderClass = 'border-amber-400 bg-slate-900 secret-card';
+                    rankBadge = 'bg-gradient-to-r from-orange-500 to-amber-300 text-slate-950 font-black';
+                } else if (item.rank === 'SSR') {
+                    borderClass = 'border-amber-400 bg-slate-900 ssr-card';
+                    rankBadge = 'ssr-rainbow text-white font-black';
+                } else if (item.rank === 'SR') {
+                    borderClass = 'border-amber-500/80 bg-slate-900';
+                    rankBadge = 'bg-amber-500 text-slate-950 font-bold';
+                } else if (item.rank === 'R') {
+                    borderClass = 'border-purple-500/60 bg-slate-900';
+                    rankBadge = 'bg-purple-600 text-white font-bold';
+                }
+
+                card.className = `p-3 rounded-2xl border ${borderClass} flex flex-col items-center text-center relative shadow-md`;
+                card.innerHTML = `
+                    <span class="text-[10px] px-2 py-0.5 rounded-full ${rankBadge} mb-1">${item.rank}</span>
+                    <i class="fa-solid ${item.icon} text-2xl ${item.color} my-2"></i>
+                    <div class="text-xs font-bold text-slate-200 truncate w-full">${item.name}</div>
+                `;
+                grid.appendChild(card);
+            });
+
+            if (hasSecret || hasSSR) {
+                triggerConfetti(['#ffd700', '#ff0055', '#00ffff'], 80);
+            }
+
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        async function pullGacha(count) {
+            if (state.isSpinning) return;
+            state.isSpinning = true;
+
+            const items = [];
+            let highestRank = 'S';
+            const rankPriority = { 'SECRET': 4, 'SSR': 3, 'SR': 2, 'R': 1, 'S': 0 };
+
+            for (let i = 0; i < count; i++) {
+                const item = getRandomItem();
+                items.push(item);
+                if (rankPriority[item.rank] > rankPriority[highestRank]) {
+                    highestRank = item.rank;
+                }
+            }
+
+            await playGachaAnimation(highestRank);
+
+            if (count === 1) {
+                showSingleResult(items[0]);
+            } else {
+                showMultiResult(items);
+            }
+
+            state.isSpinning = false;
+        }
+
+        function renderCollection() {
+            const grid = document.getElementById('collection-grid');
+            const stats = document.getElementById('collection-stats');
+            grid.innerHTML = '';
+
+            let totalTypes = GACHA_ITEMS.length;
+            let unlockedTypes = 0;
+
+            const filteredItems = GACHA_ITEMS.filter(item => {
+                if (state.currentFilter === 'ALL') return true;
+                return item.rank === state.currentFilter;
+            });
+
+            filteredItems.forEach(item => {
+                const count = state.inventory[item.id] || 0;
+                if (count > 0) unlockedTypes++;
+
+                const card = document.createElement('div');
+                if (count > 0) {
+                    let borderClass = 'border-slate-700 bg-slate-900';
+                    if (item.rank === 'SECRET') borderClass = 'border-amber-400 bg-slate-900 secret-card';
+                    else if (item.rank === 'SSR') borderClass = 'border-amber-400 bg-slate-900 ssr-card';
+                    else if (item.rank === 'SR') borderClass = 'border-amber-500/80 bg-slate-900';
+                    else if (item.rank === 'R') borderClass = 'border-purple-500/60 bg-slate-900';
+
+                    card.className = `p-3 rounded-2xl border ${borderClass} flex flex-col items-center text-center relative shadow-md`;
+                    card.innerHTML = `
+                        <span class="absolute top-2 right-2 text-[10px] bg-amber-500 text-slate-950 font-black px-1.5 py-0.5 rounded-full">x${count}</span>
+                        <i class="fa-solid ${item.icon} text-3xl ${item.color} my-2"></i>
+                        <div class="text-xs font-bold text-white truncate w-full">${item.name}</div>
+                        <div class="text-[10px] text-amber-400 font-bold mt-1">${item.rank}</div>
+                    `;
+                } else {
+                    card.className = 'p-3 rounded-2xl border border-slate-800 bg-slate-950/60 flex flex-col items-center text-center relative opacity-50';
+                    card.innerHTML = `
+                        <i class="fa-solid fa-lock text-3xl text-slate-600 my-2"></i>
+                        <div class="text-xs font-bold text-slate-500 truncate w-full">未獲得</div>
+                        <div class="text-[10px] text-slate-600 font-bold mt-1">${item.rank}</div>
+                    `;
+                }
+                grid.appendChild(card);
+            });
+
+            const overallUnlocked = Object.keys(state.inventory).length;
+            const percentage = Math.round((overallUnlocked / totalTypes) * 100);
+            stats.textContent = `コンプリート率: ${percentage}% (${overallUnlocked}/${totalTypes})`;
+        }
+
+        // Mode Switching
+        const btnNormal = document.getElementById('btn-mode-normal');
+        const btnGod = document.getElementById('btn-mode-god');
+        const rateLabel = document.getElementById('rate-mode-label');
+        const rateSecret = document.getElementById('rate-secret');
+        const rateSSR = document.getElementById('rate-ssr');
+        const rateSR = document.getElementById('rate-sr');
+        const rateR = document.getElementById('rate-r');
+        const rateS = document.getElementById('rate-s');
+
+        function updateModeUI() {
+            if (state.mode === 'GOD') {
+                btnGod.className = "flex-1 py-1.5 text-xs font-black rounded-lg bg-gradient-to-r from-amber-400 to-orange-500 text-slate-950 shadow transition-all flex items-center justify-center gap-1 animate-pulse";
+                btnNormal.className = "flex-1 py-1.5 text-xs font-bold rounded-lg text-slate-400 hover:text-white transition-all";
+                rateLabel.textContent = "【神ガチャモード】";
+                rateLabel.className = "text-amber-300 font-black animate-pulse";
+                rateSecret.textContent = "1.0%";
+                rateSSR.textContent = "19.0%";
+                rateSR.textContent = "30.0%";
+                rateR.textContent = "30.0%";
+                rateS.textContent = "20.0%";
+            } else {
+                btnNormal.className = "flex-1 py-1.5 text-xs font-black rounded-lg bg-amber-500 text-slate-950 shadow transition-all";
+                btnGod.className = "flex-1 py-1.5 text-xs font-bold rounded-lg text-slate-400 hover:text-white transition-all flex items-center justify-center gap-1";
+                rateLabel.textContent = "【通常モード】";
+                rateLabel.className = "text-amber-400 font-black";
+                rateSecret.textContent = "0.01%";
+                rateSSR.textContent = "1.0%";
+                rateSR.textContent = "4.0%";
+                rateR.textContent = "20.0%";
+                rateS.textContent = "74.99%";
+            }
+        }
+
+        window.onload = function() {
+            populateChamber();
+
+            // Pull Buttons
+            document.getElementById('btn-pull-1').addEventListener('click', () => pullGacha(1));
+            document.getElementById('btn-pull-10').addEventListener('click', () => pullGacha(10));
+            document.getElementById('btn-pull-100').addEventListener('click', () => pullGacha(100));
+            document.getElementById('gacha-handle').addEventListener('click', () => pullGacha(1));
+
+            // Close Modals
+            document.getElementById('btn-close-result').addEventListener('click', () => {
+                document.getElementById('result-modal').classList.add('hidden');
+            });
+            document.getElementById('btn-close-multi').addEventListener('click', () => {
+                document.getElementById('multi-result-modal').classList.add('hidden');
+            });
+
+            // Collection Modal
+            document.getElementById('btn-collection').addEventListener('click', () => {
+                renderCollection();
+                document.getElementById('collection-modal').classList.remove('hidden');
+                document.getElementById('collection-modal').classList.add('flex');
+            });
+            document.getElementById('btn-close-collection').addEventListener('click', () => {
+                document.getElementById('collection-modal').classList.add('hidden');
+            });
+
+            // Mode Toggle
+            btnNormal.addEventListener('click', () => {
+                state.mode = 'NORMAL';
+                updateModeUI();
+            });
+
+            btnGod.addEventListener('click', () => {
+                state.mode = 'GOD';
+                updateModeUI();
+            });
+
+            // Filter Tabs
+            document.querySelectorAll('.col-filter-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    document.querySelectorAll('.col-filter-btn').forEach(b => {
+                        b.className = "col-filter-btn px-3 py-1 rounded-lg text-xs font-bold bg-slate-700 text-slate-300";
+                    });
+                    e.target.className = "col-filter-btn px-3 py-1 rounded-lg text-xs font-bold bg-indigo-600 text-white";
+                    state.currentFilter = e.target.getAttribute('data-rank');
+                    renderCollection();
+                });
+            });
+        };
+    </script>
+</body>
+</html>

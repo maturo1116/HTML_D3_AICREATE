@@ -1,0 +1,1124 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MOSQUITO ESCAPE - 蚊の選択 (5人・5ステップ5択版)</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Noto+Sans+JP:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+            background-color: #0d1117;
+            color: #f0f6fc;
+            user-select: none;
+        }
+        .font-pixel {
+            font-family: 'DotGothic16', sans-serif;
+        }
+        .blood-card {
+            background: linear-gradient(135deg, rgba(30, 10, 15, 0.95), rgba(15, 23, 42, 0.95));
+            border: 2px solid rgba(239, 68, 68, 0.4);
+            box-shadow: 0 0 25px rgba(239, 68, 68, 0.2);
+        }
+        .choice-btn {
+            transition: all 0.2s ease-in-out;
+        }
+        .choice-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0 15px rgba(239, 68, 68, 0.5);
+            border-color: #ef4444;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .fade-in {
+            animation: fadeIn 0.3s ease-out forwards;
+        }
+        @keyframes shake {
+            0% { transform: translate(1px, 1px) rotate(0deg); }
+            10% { transform: translate(-1px, -2px) rotate(-1deg); }
+            20% { transform: translate(-3px, 0px) rotate(1deg); }
+            30% { transform: translate(3px, 2px) rotate(0deg); }
+            40% { transform: translate(1px, -1px) rotate(1deg); }
+            50% { transform: translate(-1px, 2px) rotate(-1deg); }
+            60% { transform: translate(-3px, 1px) rotate(0deg); }
+            70% { transform: translate(3px, 1px) rotate(-1deg); }
+            80% { transform: translate(-1px, -1px) rotate(1deg); }
+            90% { transform: translate(1px, 2px) rotate(0deg); }
+            100% { transform: translate(1px, -2px) rotate(-1deg); }
+        }
+        .slapped-shake {
+            animation: shake 0.5s;
+        }
+        @keyframes rainbow {
+            0% { border-color: #ef4444; box-shadow: 0 0 20px rgba(239, 68, 68, 0.6); }
+            50% { border-color: #eab308; box-shadow: 0 0 25px rgba(234, 179, 8, 0.8); }
+            100% { border-color: #ef4444; box-shadow: 0 0 20px rgba(239, 68, 68, 0.6); }
+        }
+        .king-card {
+            animation: rainbow 3s infinite ease-in-out;
+            background: linear-gradient(135deg, rgba(45, 20, 5, 0.95), rgba(15, 23, 42, 0.98));
+        }
+
+        /* カスタムスクロールバー（図鑑用） */
+        #collection-list::-webkit-scrollbar {
+            width: 6px;
+        }
+        #collection-list::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.6);
+            border-radius: 8px;
+        }
+        #collection-list::-webkit-scrollbar-thumb {
+            background: rgba(234, 179, 8, 0.4);
+            border-radius: 8px;
+        }
+        #collection-list::-webkit-scrollbar-thumb:hover {
+            background: rgba(234, 179, 8, 0.8);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-3 sm:p-6 overflow-x-hidden">
+
+    <!-- Game Container -->
+    <div id="game-card" class="w-full max-w-xl blood-card rounded-3xl p-5 sm:p-8 relative overflow-hidden my-auto border transition-all duration-500">
+        
+        <!-- Top Status Bar -->
+        <div class="flex justify-between items-center border-b border-red-900/50 pb-4 mb-3 text-xs sm:text-sm">
+            <div class="flex items-center gap-2">
+                <i class="fa-solid fa-bug text-red-500 text-lg"></i>
+                <span class="font-pixel font-bold text-red-400 text-base tracking-widest">MOSQUITO MISSION</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <!-- Collection Modal Trigger Button -->
+                <button id="open-collection-btn" class="flex items-center gap-1.5 bg-slate-800/90 hover:bg-slate-700 text-yellow-400 px-3 py-1 rounded-full border border-yellow-500/40 text-xs font-pixel font-bold cursor-pointer transition">
+                    <i class="fa-solid fa-book-bookmark text-xs"></i>
+                    <span>図鑑</span>
+                    <span id="collection-badge-count" class="bg-yellow-500/20 text-yellow-300 px-1.5 py-0.2 rounded-full text-[10px]">0/26</span>
+                </button>
+
+                <div class="flex items-center gap-2 bg-red-950/60 px-3 py-1 rounded-full border border-red-800/40">
+                    <i class="fa-solid fa-droplet text-red-500 animate-pulse"></i>
+                    <span class="text-xs text-slate-300">満腹度:</span>
+                    <span id="cleared-count" class="font-bold text-yellow-400 font-pixel">0%</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Target Clear Badges -->
+        <div class="flex justify-around items-center bg-black/40 p-2 rounded-xl border border-slate-800/80 mb-3 text-xs">
+            <div id="badge-student" class="flex flex-col items-center opacity-40 transition-all duration-300">
+                <i class="fa-solid fa-user-graduate text-slate-400 text-base mb-0.5"></i>
+                <span class="text-[10px] text-slate-400">受験生</span>
+            </div>
+            <div id="badge-macho" class="flex flex-col items-center opacity-40 transition-all duration-300">
+                <i class="fa-solid fa-dumbbell text-slate-400 text-base mb-0.5"></i>
+                <span class="text-[10px] text-slate-400">筋肉男</span>
+            </div>
+            <div id="badge-gamer" class="flex flex-col items-center opacity-40 transition-all duration-300">
+                <i class="fa-solid fa-gamepad text-slate-400 text-base mb-0.5"></i>
+                <span class="text-[10px] text-slate-400">ゲーマー</span>
+            </div>
+            <div id="badge-drunk" class="flex flex-col items-center opacity-40 transition-all duration-300">
+                <i class="fa-solid fa-beer-mug-empty text-slate-400 text-base mb-0.5"></i>
+                <span class="text-[10px] text-slate-400">酔っ払い</span>
+            </div>
+            <div id="badge-catowner" class="flex flex-col items-center opacity-40 transition-all duration-300">
+                <i class="fa-solid fa-cat text-slate-400 text-base mb-0.5"></i>
+                <span class="text-[10px] text-slate-400">飼い主</span>
+            </div>
+        </div>
+
+        <!-- Target / Location Header -->
+        <div id="scene-header" class="mb-3 flex items-center justify-between text-xs sm:text-sm text-slate-400">
+            <span id="target-name" class="font-bold text-red-300 flex items-center gap-1.5">
+                <i class="fa-solid fa-crosshairs"></i> ターゲット選択中
+            </span>
+            <div class="flex items-center gap-3">
+                <!-- タイマー表示エリア -->
+                <div id="timer-box" class="hidden flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-red-950/80 border border-red-500/50 text-red-400 font-pixel font-bold animate-pulse">
+                    <i class="fa-solid fa-stopwatch text-xs"></i>
+                    <span id="timer-text">60s</span>
+                </div>
+                <span id="stage-step" class="text-slate-500 font-pixel">STEP 0/5</span>
+            </div>
+        </div>
+
+        <!-- Main Display Box / Target Avatar -->
+        <div id="scene-image-box" class="w-full h-36 sm:h-44 rounded-2xl bg-slate-950 border border-red-900/40 mb-4 relative overflow-hidden flex flex-col items-center justify-center p-4 text-center">
+            <div id="scene-bg-icon" class="text-5xl sm:text-6xl text-red-500/80 mb-2">
+                <i class="fa-solid fa-mosquito"></i>
+            </div>
+            <div id="target-status-badge" class="bg-red-950/80 text-red-300 border border-red-700/60 px-3 py-1 rounded-full text-xs font-bold font-pixel">
+                獲物を探せ！
+            </div>
+        </div>
+
+        <!-- Main Story / Dialogue Text Box -->
+        <div id="text-container" class="min-h-[85px] mb-4 bg-black/60 p-4 rounded-xl border border-slate-800 text-xs sm:text-sm leading-relaxed text-slate-200 fade-in">
+            <p id="story-text">【主人公：１匹の命がけの蚊】<br>あなたの空腹度は限界だ。今夜中に人間の血を吸わなければ、明日を迎えることなく餓死してしまう……。部屋には5人の人間がいる。死の危険を冒し、誰の血を狙う？</p>
+        </div>
+
+        <!-- Choices Container -->
+        <div id="choices-container" class="space-y-2">
+            <!-- Dynamic Buttons -->
+        </div>
+
+        <!-- Ending Screen Container -->
+        <div id="ending-container" class="hidden text-center py-2 fade-in">
+            <div id="ending-badge" class="inline-block px-4 py-1 rounded-full text-xs font-bold font-pixel mb-2">
+                BAD END
+            </div>
+            <div id="ending-title" class="text-lg sm:text-xl font-black mb-2 text-red-400 font-pixel tracking-wide">
+                バッドエンドタイトル
+            </div>
+            <p id="ending-desc" class="text-xs sm:text-sm text-slate-300 mb-5 leading-relaxed bg-black/40 p-3 rounded-lg border border-slate-800">
+                詳細な結末テキスト
+            </p>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5" id="ending-buttons">
+                <button id="retry-btn" class="w-full py-3 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs sm:text-sm rounded-xl border border-slate-600 transition cursor-pointer flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-rotate-right"></i> 全体リセット (0%)
+                </button>
+                <button id="next-target-btn" class="w-full py-3 bg-gradient-to-r from-red-600 to-rose-700 hover:from-red-500 hover:to-rose-600 text-white font-bold text-xs sm:text-sm rounded-xl shadow-lg shadow-red-900/30 transition cursor-pointer flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-users-viewfinder"></i> ターゲット選択へ
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Ending Collection Modal -->
+    <div id="collection-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-3 hidden fade-in">
+        <div class="bg-slate-900 border border-yellow-500/40 rounded-3xl w-full max-w-xl max-h-[85vh] flex flex-col p-5 shadow-2xl relative">
+            <div class="flex justify-between items-center pb-3 border-b border-slate-800 mb-3">
+                <div class="flex items-center gap-2 text-yellow-400 font-pixel font-bold">
+                    <i class="fa-solid fa-book-bookmark text-lg"></i>
+                    <span>ENDING COLLECTION (エンド全26種)</span>
+                </div>
+                <button id="close-collection-btn" class="text-slate-400 hover:text-white text-xl cursor-pointer p-1">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <!-- Collection Progress Bar -->
+            <div class="bg-black/50 p-3 rounded-xl border border-slate-800 mb-3 flex items-center justify-between text-xs">
+                <span class="text-slate-300">図鑑回収率:</span>
+                <span id="collection-rate-text" class="text-yellow-400 font-bold font-pixel text-sm">0 / 26 (0%)</span>
+            </div>
+
+            <!-- Scrollable Endings List -->
+            <div id="collection-list" class="overflow-y-auto space-y-2 pr-2 pb-6 flex-1 text-xs max-h-[60vh] scroll-smooth" style="-webkit-overflow-scrolling: touch;">
+                <!-- Dynamically Generated Collection Items -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Web Audio API Sound Effects
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        let audioCtx = null;
+
+        // Initialize Audio Context on user interaction
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new AudioCtx();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+        
+        // Timer Variables
+        let timerInterval = null;
+        let timeLeft = 60;
+
+        function startTimer() {
+            stopTimer();
+            timeLeft = 60;
+            const timerBox = document.getElementById('timer-box');
+            const timerText = document.getElementById('timer-text');
+            timerBox.classList.remove('hidden');
+            timerText.innerText = `${timeLeft}s`;
+
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                timerText.innerText = `${timeLeft}s`;
+
+                if (timeLeft <= 10) {
+                    timerBox.classList.add('bg-red-600', 'text-white', 'border-white');
+                    timerBox.classList.remove('bg-red-950/80', 'text-red-400', 'border-red-500/50');
+                } else {
+                    timerBox.classList.remove('bg-red-600', 'text-white', 'border-white');
+                    timerBox.classList.add('bg-red-950/80', 'text-red-400', 'border-red-500/50');
+                }
+
+                if (timeLeft <= 0) {
+                    stopTimer();
+                    handleTimeOut();
+                }
+            }, 1000);
+        }
+
+        function stopTimer() {
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+            }
+            const timerBox = document.getElementById('timer-box');
+            if (timerBox) timerBox.classList.add('hidden');
+        }
+
+        function handleTimeOut() {
+            initAudio();
+            playSlapSound();
+            showBadEnd({
+                title: "BAD END: タイムアップ（迷いによる死亡）",
+                desc: "60秒間迷ってホバリングしている間に羽音で完全に警戒され、容赦ない両手挟み撃ち（拍手）で潰された！蚊の世界に「迷い」は禁物だ。"
+            });
+        }
+
+        function playBuzzSound() {
+            if (!audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(220, audioCtx.currentTime);
+            osc.frequency.linearRampToValueAtTime(260, audioCtx.currentTime + 0.1);
+            gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+            gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.1);
+        }
+
+        function playSlapSound() {
+            if (!audioCtx) return;
+            const now = audioCtx.currentTime;
+
+            // 1. スラップ衝撃ノイズ (平手打ち・拍手音)
+            const bufferSize = audioCtx.sampleRate * 0.25;
+            const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            const output = buffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) {
+                output[i] = Math.random() * 2 - 1;
+            }
+            const whiteNoise = audioCtx.createBufferSource();
+            whiteNoise.buffer = buffer;
+
+            const filter = audioCtx.createBiquadFilter();
+            filter.type = 'bandpass';
+            filter.frequency.setValueAtTime(1200, now);
+            filter.Q.setValueAtTime(1.5, now);
+
+            const noiseGain = audioCtx.createGain();
+            noiseGain.gain.setValueAtTime(0.8, now);
+            noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+
+            whiteNoise.connect(filter);
+            filter.connect(noiseGain);
+            noiseGain.connect(audioCtx.destination);
+            whiteNoise.start(now);
+
+            // 2. ズシーンという重低音インパクト (ゲームオーバー感の強調)
+            const subOsc = audioCtx.createOscillator();
+            const subGain = audioCtx.createGain();
+            subOsc.type = 'triangle';
+            subOsc.frequency.setValueAtTime(160, now);
+            subOsc.frequency.exponentialRampToValueAtTime(30, now + 0.3);
+
+            subGain.gain.setValueAtTime(0.7, now);
+            subGain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+
+            subOsc.connect(subGain);
+            subGain.connect(audioCtx.destination);
+            subOsc.start(now);
+            subOsc.stop(now + 0.3);
+        }
+
+        function playSuccessSound() {
+            if (!audioCtx) return;
+            const now = audioCtx.currentTime;
+            // 明るく気持ち良いクリアコード（Cメジャー7thアルペジオ + ピッチシフト）
+            const notes = [523.25, 659.25, 783.99, 987.77, 1046.50]; // C5, E5, G5, B5, C6
+            
+            notes.forEach((freq, idx) => {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                
+                osc.type = 'sine'; // まろやかでクリスタルなサウンド
+                osc.frequency.setValueAtTime(freq, now + idx * 0.06);
+                
+                gain.gain.setValueAtTime(0.2, now + idx * 0.06);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.06 + 0.3);
+                
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                
+                osc.start(now + idx * 0.06);
+                osc.stop(now + idx * 0.06 + 0.3);
+            });
+        }
+
+        function playKingFanfare() {
+            if (!audioCtx) return;
+            const now = audioCtx.currentTime;
+            const notes = [440, 554.37, 659.25, 880, 880, 880, 1108.73];
+            const times = [0, 0.15, 0.3, 0.45, 0.6, 0.75, 0.9];
+            const durations = [0.12, 0.12, 0.12, 0.12, 0.12, 0.12, 0.5];
+
+            notes.forEach((freq, idx) => {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(freq, now + times[idx]);
+                gain.gain.setValueAtTime(0.2, now + times[idx]);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + times[idx] + durations[idx]);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(now + times[idx]);
+                osc.stop(now + times[idx] + durations[idx]);
+            });
+        }
+
+        // Track Cleared Targets
+        const clearedTargets = {
+            student: false,
+            macho: false,
+            gamer: false,
+            drunk: false,
+            catowner: false
+        };
+
+        // Track Unlocked Endings (Total 26)
+        const unlockedEndings = new Set();
+
+        // Game State Variables
+        let currentState = 'select_target'; // 'select_target', 'in_step', 'ending'
+        let currentTargetKey = null;
+        let currentStepIndex = 0;
+
+        // Select Target Function
+        function selectTarget(targetKey) {
+            initAudio();
+            playBuzzSound();
+            currentTargetKey = targetKey;
+            currentStepIndex = 0;
+            currentState = 'in_step';
+            renderUI();
+        }
+
+        // Target Info Definitions
+        const targetsInfo = {
+            student: { name: '勉強中の受験生', icon: 'fa-user-graduate', color: 'text-blue-400' },
+            macho: { name: '筋トレ中の筋肉男', icon: 'fa-dumbbell', color: 'text-red-400' },
+            gamer: { name: 'ゲーム没頭ゲーマー', icon: 'fa-gamepad', color: 'text-purple-400' },
+            drunk: { name: '酔っ払いの会社員', icon: 'fa-beer-mug-empty', color: 'text-amber-400' },
+            catowner: { name: 'ネコと遊ぶ飼い主', icon: 'fa-cat', color: 'text-emerald-400' }
+        };
+
+        // All 26 Endings List Definition for Collection Screen
+        const allEndingsList = [
+            // Student
+            { id: 'student_bad_1', target: 'student', type: 'bad', title: "BAD END 1: 視界で即撃墜", desc: "動く目線に引っかかり、ノートを丸めてパンチされて即死した。" },
+            { id: 'student_bad_2', target: 'student', type: 'bad', title: "BAD END 2: 首筋への反射叩き", desc: "チクッとした瞬間に無意識の手が飛んできて叩き潰された。" },
+            { id: 'student_bad_3', target: 'student', type: 'bad', title: "BAD END 3: 静寂の痛み", desc: "しんと静まり返った部屋では微小な痒みも目立ち即死。" },
+            { id: 'student_bad_4', target: 'student', type: 'bad', title: "BAD END 4: 重すぎて飛ばず", desc: "血を吸いすぎて重くなり、飛び立った瞬間に床へ落下し踏まれた。" },
+            { id: 'student_success', target: 'student', type: 'success', title: "SUCCESS: 受験生の血を制覇", desc: "集中している受験生の足を刺し、影の中へ無事脱出完了！" },
+
+            // Macho
+            { id: 'macho_bad_1', target: 'macho', type: 'bad', title: "BAD END 1: 息圧で吹っ飛ぶ", desc: "「ヌン！」という熱い鼻息の風圧で壁に激突し脳震盪を起こした。" },
+            { id: 'macho_bad_2', target: 'macho', type: 'bad', title: "BAD END 2: 筋肉の硬化", desc: "力を込めた瞬間に筋肉が鉄のように硬くなり針が折れた。" },
+            { id: 'macho_bad_3', target: 'macho', type: 'bad', title: "BAD END 3: 鏡越しに発見", desc: "鏡に映った蚊の姿を見逃さず叩き潰された。" },
+            { id: 'macho_bad_4', target: 'macho', type: 'bad', title: "BAD END 4: 内圧破裂", desc: "マッチョの高血圧に耐え切れず蚊のお腹が破裂した。" },
+            { id: 'macho_success', target: 'macho', type: 'success', title: "SUCCESS: 筋肉男の血を制覇", desc: "高タンパクな血液をGET！筋肉ベンチの影へ見事退避！" },
+
+            // Gamer
+            { id: 'gamer_bad_1', target: 'gamer', type: 'bad', title: "BAD END 1: モニター熱と光", desc: "画面の強い光で目がくらみキーボードの上に落下、叩かれた。" },
+            { id: 'gamer_bad_2', target: 'gamer', type: 'bad', title: "BAD END 2: エイムの犠牲", desc: "激しいエイム操作で振り回され壁に激突した。" },
+            { id: 'gamer_bad_3', target: 'gamer', type: 'bad', title: "BAD END 3: 暗転の恐怖", desc: "画面が暗くなり肘の異物に速攻で気づかれた。" },
+            { id: 'gamer_bad_4', target: 'gamer', type: 'bad', title: "BAD END 4: 筋肉の緊張", desc: "ゲーマーが力んだ瞬間に腕の筋が張り針が抜けない。" },
+            { id: 'gamer_success', target: 'gamer', type: 'success', title: "SUCCESS: ゲーマーの血を制覇", desc: "カフェインたっぷりの血を味わい、PCケース裏に生還！" },
+
+            // Drunk
+            { id: 'drunk_bad_1', target: 'drunk', type: 'bad', title: "BAD END 1: アルコール呼気", desc: "強烈な酒気で蚊が酔っぱらい、千鳥足ならぬ「千鳥飛行」で叩き落ちた。" },
+            { id: 'drunk_bad_2', target: 'drunk', type: 'bad', title: "BAD END 2: 無意識のハエ叩き", desc: "顔の痒みに反応した豪快な平手打ちが顔面に直撃。" },
+            { id: 'drunk_bad_3', target: 'drunk', type: 'bad', title: "BAD END 3: 突然の蹴り出し", desc: "うなされて足を思い切り蹴り出され、壁に叩きつけられた。" },
+            { id: 'drunk_bad_4', target: 'drunk', type: 'bad', title: "BAD END 4: 蚊の急性アルコール中毒", desc: "血中アルコール濃度が高すぎて蚊が麻痺して即死。" },
+            { id: 'drunk_success', target: 'drunk', type: 'success', title: "SUCCESS: 酔っ払いの血を制覇", desc: "泥酔状態に乗じてたっぷり吸血！空き缶の裏へ緊急退避！" },
+
+            // Catowner
+            { id: 'catowner_bad_1', target: 'catowner', type: 'bad', title: "BAD END 1: ネコの動体視力", desc: "ネコが超高速の猫パンチを繰り出し、空中で撃ち落とされた。" },
+            { id: 'catowner_bad_2', target: 'catowner', type: 'bad', title: "BAD END 2: ネコの視線直下", desc: "ネコの手元だったためネコに見つかり一瞬で舐めとられた。" },
+            { id: 'catowner_bad_3', target: 'catowner', type: 'bad', title: "BAD END 3: 声の振動", desc: "体の振動で異物感が強調され、飼い主の手が飛んできた。" },
+            { id: 'catowner_bad_4', target: 'catowner', type: 'bad', title: "BAD END 4: ネコの爪", desc: "浮上した瞬間の空気の揺らぎを察知され爪で引き裂かれた。" },
+            { id: 'catowner_success', target: 'catowner', type: 'success', title: "SUCCESS: 飼い主の血を制覇", desc: "難敵ネコの爪をかいくぐり、ソファの下1cmの隙間に逃げ延びた！" },
+
+            // Timeout
+            { id: 'timeout_bad', target: 'system', type: 'bad', title: "BAD END: タイムアップ（迷い）", desc: "60秒間迷ってホバリングしている間に羽音で警戒され、両手で挟み撃ちされた。" }
+        ];
+
+        // Scenario Data (5 Targets, 5 Steps each, 5 Choices each step)
+        const scenarios = {
+            student: {
+                steps: [
+                    {
+                        text: "【STEP 1/5: アプローチ】受験生が机に向かいカリカリとノートをとっている。どこから近づく？",
+                        choices: [
+                            { text: "真上（天井近く）から静かに垂直降下する", nextStep: 1 },
+                            { text: "目の前を横切って注意をそらす", badEnd: { id: 'student_bad_1', title: "BAD END 1: 視界で即撃墜", desc: "動く目線に引っかかり、ノートを丸めてパンチされて即死した。" } },
+                            { text: "耳元へブーンと音を立てて接近する", badEnd: { id: 'student_bad_1', title: "BAD END 1: 視界で即撃墜", desc: "羽音で察知され、両手で挟み撃ちの爆音平手打ちを食らった。" } },
+                            { text: "足元から床すれすれを這うように飛ぶ", nextStep: 1 },
+                            { text: "シャープペンの芯の先を目がけて飛ぶ", badEnd: { id: 'student_bad_1', title: "BAD END 1: ペン先クラッシュ", desc: "ノックした瞬間の素早いペンの動きにはじき飛ばされた。" } }
+                        ]
+                    },
+                    {
+                        text: "【STEP 2/5: 着地場所の選定】机の周りに到達した。どこに着地して血を吸う？",
+                        choices: [
+                            { text: "集中して露出している首筋", badEnd: { id: 'student_bad_2', title: "BAD END 2: 首筋への反射叩き", desc: "チクッとした瞬間に無意識の手が飛んできて叩き潰された。" } },
+                            { text: "ノートを押さえている左手の甲", badEnd: { id: 'student_bad_2', title: "BAD END 2: 首筋への反射叩き", desc: "視線が真下にあったため、異物として即座に指で潰された。" } },
+                            { text: "靴下とズボンのすき間の足首", nextStep: 2 },
+                            { text: "おでこの真ん中", badEnd: { id: 'student_bad_2', title: "BAD END 2: 首筋への反射叩き", desc: "おでこは神経が過敏。着地の瞬間に手掌打ちされた。" } },
+                            { text: "メガネのフレームの端", badEnd: { id: 'student_bad_2', title: "BAD END 2: 首筋への反射叩き", desc: "メガネをかけ直す動作に巻き込まれて圧死した。" } }
+                        ]
+                    },
+                    {
+                        text: "【STEP 3/5: 麻酔と針の挿入】足首に着地した。皮膚に針を刺すタイミングは？",
+                        choices: [
+                            { text: "ページをめくって紙の音が鳴った瞬間", nextStep: 3 },
+                            { text: "息を深く吐いたリラックス時", badEnd: { id: 'student_bad_3', title: "BAD END 3: 静寂の痛み", desc: "吐く息の風圧力で体勢が崩れ、異質感を与えてバレた。" } },
+                            { text: "静まり返っている最中に一気に刺す", badEnd: { id: 'student_bad_3', title: "BAD END 3: 静寂の痛み", desc: "しんと静まり返った部屋では微小な痒みも目立ち即死。" } },
+                            { text: "参考書を音を立てて閉じた瞬間", nextStep: 3 },
+                            { text: "あくびをして上を向いた瞬間", badEnd: { id: 'student_bad_3', title: "BAD END 3: 静寂の痛み", desc: "あくびと同時に足を大きくバタつかせ、踏み潰された。" } }
+                        ]
+                    },
+                    {
+                        text: "【STEP 4/5: 吸血量の調整】針が入った！赤く美味しい血が流れ込んでくる。どこまで吸う？",
+                        choices: [
+                            { text: "腹がパンパンになるまで極限まで吸う", badEnd: { id: 'student_bad_4', title: "BAD END 4: 重すぎて飛ばず", desc: "血を吸いすぎて重くなり、飛び立った瞬間に床へ落下し踏まれた。" } },
+                            { text: "腹八分目で素早く切り上げる", nextStep: 4 },
+                            { text: "一口吸ったら警戒してすぐ抜く", badEnd: { id: 'student_bad_4', title: "BAD END 4: 重すぎて飛ばず", desc: "血が足りず空腹のままフラフラになり餓死した。" } },
+                            { text: "吸いながら足をさすってごまかす", badEnd: { id: 'student_bad_4', title: "BAD END 4: 重すぎて飛ばず", desc: "モゾモゾした動きで即座に足元を見られ叩かれた。" } },
+                            { text: "満腹まで吸ってから皮膚の上で休む", badEnd: { id: 'student_bad_4', title: "BAD END 4: 重すぎて飛ばず", desc: "かゆみで足元を見た受験生にかかとで踏まれた。" } }
+                        ]
+                    },
+                    {
+                        text: "【STEP 5/5: 命がけの脱出】吸血完了！受験生が痒みで脚へ手を伸ばしてきた！どう逃げる？",
+                        choices: [
+                            { text: "明るい机の上の蛍光灯に向かって直線飛行", badEnd: { id: 'student_bad_4', title: "BAD END 4: 光の罠", desc: "蛍光灯の熱で目くらましになり、飛んできた下敷きで叩かれた。" } },
+                            { text: "暗い机の裏側の影へ一直線に滑空する", success: true, successId: 'student_success' },
+                            { text: "受験生の背中側に回って待機する", badEnd: { id: 'student_bad_4', title: "BAD END 4: 振り返りパンチ", desc: "振り返った受験生の肘が直撃してペシャンコになった。" } },
+                            { text: "その場でホバリングして様子を見る", badEnd: { id: 'student_bad_4', title: "BAD END 4: 空中キャッチ", desc: "動かない標的として受験生に素手で空中キャッチされた。" } },
+                            { text: "部屋のドアのすき間を目指して一直線", badEnd: { id: 'student_bad_4', title: "BAD END 4: 拍手で圧殺", desc: "直線的な動きを見切られ、両手で挟み撃ち（拍手）された。" } }
+                        ]
+                    }
+                ]
+            },
+            macho: {
+                steps: [
+                    {
+                        text: "【STEP 1/5: 接近】筋肉男が汗だくでダンベルを持ち上げている。どこからアプローチする？",
+                        choices: [
+                            { text: "汗の臭いが充満する胸筋の前から直進", badEnd: { id: 'macho_bad_1', title: "BAD END 1: 息圧で吹っ飛ぶ", desc: "「ヌン！」という熱い鼻息の風圧で壁に激突し脳震盪を起こした。" } },
+                            { text: "背後の影から静かに背筋へ接近", nextStep: 1 },
+                            { text: "持ち上げているダンベルの端に着地を狙う", badEnd: { id: 'macho_bad_1', title: "BAD END 1: 息圧で吹っ飛ぶ", desc: "ダンベル同士がぶつかった衝撃破で粉砕された。" } },
+                            { text: "床に落ちた汗のしずくを伝って近づく", nextStep: 1 },
+                            { text: "頭上のプロテインシェイカーから飛び降りる", badEnd: { id: 'macho_bad_1', title: "BAD END 1: 息圧で吹っ飛ぶ", desc: "シェイクした風圧で巻き込まれ圧殺された。" } }
+                        ]
+                    },
+                    {
+                        text: "【STEP 2/5: 部位選定】極上の筋肉が躍動している。どこを狙う？",
+                        choices: [
+                            { text: "血管が浮き出ている上腕二頭筋", badEnd: { id: 'macho_bad_2', title: "BAD END 2: 筋肉の硬化", desc: "力を込めた瞬間に筋肉が鉄のように硬くなり針が折れた。" } },
+                            { text: "皮下脂肪が厚く柔らかい脇腹付近", nextStep: 2 },
+                            { text: "汗が流れる首の太い血管", badEnd: { id: 'macho_bad_2', title: "BAD END 2: 筋肉の硬化", desc: "大量の汗の濁流に押し流されて溺れてしまった。" } },
+                            { text: "浮き出た腹筋の谷間", badEnd: { id: 'macho_bad_2', title: "BAD END 2: 筋肉の硬化", desc: "クランチの動作で腹筋に挟まれて押しつぶされた。" } },
+                            { text: "パンパンに張った太ももの大腿四頭筋", badEnd: { id: 'macho_bad_2', title: "BAD END 2: 筋肉の硬化", desc: "巨大な手で無意識に太ももを叩かれ潰された。" } }
+                        ]
+                    },
+                    {
+                        text: "【STEP 3/5: 針の刺入】脇腹に着地した。刺すベストタイミングは？",
+                        choices: [
+                            { text: "「限界突破ぁ！」と大声を出した瞬間", nextStep: 3 },
+                            { text: "ダンベルを床に置いた直後", badEnd: { id: 'macho_bad_3', title: "BAD END 3: 鏡越しに発見", desc: "置いた瞬間の脇腹ストレッチで皮膚が引っ張られ針が抜けなくなった。" } },
+                            { text: "鏡でポージングをチェックしている時", badEnd: { id: 'macho_bad_3', title: "BAD END 3: 鏡越しに発見", desc: "鏡に映った蚊の姿を見逃さず叩き潰された。" } },
+                            { text: "プロテインを飲み干す瞬間", nextStep: 3 },
+                            { text: "インターバル中に深呼吸している時", badEnd: { id: 'macho_bad_3', title: "BAD END 3: 鏡越しに発見", desc: "激しい吐息の風圧力で飛ばされ壁に激突した。" } }
+                        ]
+                    },
+                    {
+                        text: "【STEP 4/5: 吸血】濃厚なタンパク質豊富な血液が流れ込む！どう吸う？",
+                        choices: [
+                            { text: "超高速で一気にポンプ吸血する", badEnd: { id: 'macho_bad_4', title: "BAD END 4: 内圧破裂", desc: "マッチョの高血圧に耐え切れず蚊のお腹が破裂した。" } },
+                            { text: "血管の脈動に合わせてリズムよく吸う", nextStep: 4 },
+                            { text: "少し吸っては場所を微調整して吸う", badEnd: { id: 'macho_bad_4', title: "BAD END 4: 内圧破裂", desc: "移動のモゾモゾ感で筋肉男に気づかれ握りつぶされた。" } },
+                            { text: "一気に吸ってその場で血を消化する", badEnd: { id: 'macho_bad_4', title: "BAD END 4: 内圧破裂", desc: "マッチョの高熱な体温で蚊の体が熱せられ動けなくなった。" } },
+                            { text: "ゆっくりチビチビ慎重に吸う", badEnd: { id: 'macho_bad_4', title: "BAD END 4: 内圧破裂", desc: "時間をかけすぎて筋肉男のトレーニングが終了し汗拭きタオルで拭き潰された。" } }
+                        ]
+                    },
+                    {
+                        text: "【STEP 5/5: 離脱】吸血完了！筋肉男が違和感に気づき体をねじり始めた！どう脱出する？",
+                        choices: [
+                            { text: "天井の換気扇に向かって一直線に上昇", badEnd: { id: 'macho_bad_4', title: "BAD END 4: 換気扇の旋風", desc: "換気扇の強い吸い込み風に巻き込まれて粉砕された。" } },
+                            { text: "筋肉男の背後のトレーニングベンチの影へ退避", success: true, successId: 'macho_success' },
+                            { text: "部屋の角の大きな観葉植物の中へ逃げ込む", badEnd: { id: 'macho_bad_4', title: "BAD END 4: タオル直撃", desc: "筋肉男が投げ捨てた汗拭きタオルが観葉植物に直撃し圧殺。" } },
+                            { text: "床に置いてある鏡の裏側に隠れる", badEnd: { id: 'macho_bad_4', title: "BAD END 4: 巨大な足圧", desc: "鏡を覗き込もうとした筋肉男の巨大な足に踏まれた。" } },
+                            { text: "プロテインのボトルの中に飛び込む", badEnd: { id: 'macho_bad_4', title: "BAD END 4: プロテイン沈没", desc: "プロテインの残液に足をとられて沈没した。" } }
+                        ]
+                    }
+                ]
+            },
+            gamer: {
+                steps: [
+                    {
+                        text: "【STEP 1/5: アプローチ】ヘッドセットをして画面に釘付けのゲーマー。どう接近する？",
+                        choices: [
+                            { text: "モニターの激しい光の正面から突撃", badEnd: { id: 'gamer_bad_1', title: "BAD END 1: モニター熱と光", desc: "画面の強い光で目がくらみキーボードの上に落下、叩かれた。" } },
+                            { text: "暗い部屋の天井伝いに静かに接近", nextStep: 1 },
+                            { text: "光るゲーミングチェアの後ろから忍び寄る", nextStep: 1 },
+                            { text: "ヘッドセットのコードを伝って耳元へ", badEnd: { id: 'gamer_bad_1', title: "BAD END 1: モニター熱と光", desc: "ゲーマーの超高性能マイクに羽音が拾われ速攻で叩かれた。" } },
+                            { text: "ジュースの缶から飛翔する", badEnd: { id: 'gamer_bad_1', title: "BAD END 1: モニター熱と光", desc: "開けたての炭酸の噴出ガスに直撃して落下した。" } }
+                        ]
+                    },
+                    {
+                        text: "【STEP 2/5: 着地点の選択】画面から目を離さないゲーマー。どこに降り立つ？",
+                        choices: [
+                            { text: "激しく動く右手のマウスの甲", badEnd: { id: 'gamer_bad_2', title: "BAD END 2: エイムの犠牲", desc: "激しいエイム操作で振り回され壁に激突した。" } },
+                            { text: "キーボードを操作する左腕の露出した肘付近", nextStep: 2 },
+                            { text: "裸足になっている足の指の間", badEnd: { id: 'gamer_bad_2', title: "BAD END 2: エイムの犠牲", desc: "貧乏ゆすりの激しい振動で一瞬で踏み潰された。" } },
+                            { text: "ヘッドセットで押さえられた耳の裏", badEnd: { id: 'gamer_bad_2', title: "BAD END 2: エイムの犠牲", desc: "ヘッドホンの位置調整で押しつぶされた。" } },
+                            { text: "首元に巻かれた冷感タオル", badEnd: { id: 'gamer_bad_2', title: "BAD END 2: エイムの犠牲", desc: "タオルの極冷効果で蚊の筋肉が凍りつき落下した。" } }
+                        ]
+                    },
+                    {
+                        text: "【STEP 3/5: 刺入】肘付近に着地した。刺す瞬間の隙は？",
+                        choices: [
+                            { text: "ゲームで敵を倒して歓声をあげた瞬間", nextStep: 3 },
+                            { text: "キーボードを高速連打（WASD）している最中", badEnd: { id: 'gamer_bad_3', title: "BAD END 3: 暗転の恐怖", desc: "キー打鍵の振動が腕に伝わり針がズレて激痛を与えてバレた。" } },
+                            { text: "ロード画面の静寂時", badEnd: { id: 'gamer_bad_3', title: "BAD END 3: 暗転の恐怖", desc: "画面が暗くなり肘の異物に速攻で気づかれた。" } },
+                            { text: "エナジードリンクを一口飲んだ瞬間", nextStep: 3 },
+                            { text: "ボイスチャットで暴言を吐いている最中", badEnd: { id: 'gamer_bad_3', title: "BAD END 3: 暗転の恐怖", desc: "机を強く叩いた（台パン）の衝撃で吹き飛ばされた。" } }
+                        ]
+                    },
+                    {
+                        text: "【STEP 4/5: 吸血の工夫】カフェインと砂糖が効いた血が美味しい！どう吸う？",
+                        choices: [
+                            { text: "血管に深く深く針を押し込んで吸う", badEnd: { id: 'gamer_bad_4', title: "BAD END 4: 筋肉の緊張", desc: "ゲーマーが力んだ瞬間に腕の筋が張り針が抜けない。" } },
+                            { text: "薄皮の浅い血管から静かに吸い上げる", nextStep: 4 },
+                            { text: "吸いながらカフェインパワーでスピードを上げる", badEnd: { id: 'gamer_bad_4', title: "BAD END 4: 筋肉の緊張", desc: "高濃度カフェインで蚊の心拍数が跳ね上がり自滅。" } },
+                            { text: "腹一杯吸って満足するまで味わう", badEnd: { id: 'gamer_bad_4', title: "BAD END 4: 筋肉の緊張", desc: "姿勢を変えたゲーマーの肘とデスクに挟まれた。" } },
+                            { text: "少し吸っては一息つく", badEnd: { id: 'gamer_bad_4', title: "BAD END 4: 筋肉の緊張", desc: "サイドモニターを見たゲーマーの視界に入り即死。" } }
+                        ]
+                    },
+                    {
+                        text: "【STEP 5/5: 緊急離脱】吸血完了！ゲーマーが「かゆっ！」と肘をデスクに擦り付けようとしている！",
+                        choices: [
+                            { text: "光るキーボードの隙間に隠れる", badEnd: { id: 'gamer_bad_4', title: "BAD END 4: タイピング圧殺", desc: "強烈なタイピングに巻き込まれキーの裏で潰された。" } },
+                            { text: "パソコン本体（PCケース）の裏の配線エリアへ逃げる", success: true, successId: 'gamer_success' },
+                            { text: "ディスプレイの裏側に張り付く", badEnd: { id: 'gamer_bad_4', title: "BAD END 4: グラボ排熱", desc: "グラフィックボードの強烈な排熱で乾燥して落ちた。" } },
+                            { text: "椅子のキャスターの足元へ垂直降下", badEnd: { id: 'gamer_bad_4', title: "BAD END 4: キャスター轢死", desc: "移動した椅子の車輪に踏み潰された。" } },
+                            { text: "ヘッドセットのコードを伝って逃げる", badEnd: { id: 'gamer_bad_4', title: "BAD END 4: コード手繰り寄せ", desc: "ヘッドセットを脱ぎ捨てたゲーマーの手に押しつぶされた。" } }
+                        ]
+                    }
+                ]
+            },
+            drunk: {
+                steps: [
+                    {
+                        text: "【STEP 1/5: アプローチ】ビール缶を転がしてソファで泥酔している会社員。どう近づく？",
+                        choices: [
+                            { text: "お酒の匂いが強烈な口元から接近", badEnd: { id: 'drunk_bad_1', title: "BAD END 1: アルコール呼気", desc: "強烈な酒気で蚊が酔っぱらい、千鳥足ならぬ「千鳥飛行」で叩き落ちた。" } },
+                            { text: "大いびきの音に合わせて低空飛行で接近", nextStep: 1 },
+                            { text: "倒れたビール缶のフチに着地して様子を見る", badEnd: { id: 'drunk_bad_1', title: "BAD END 1: アルコール呼気", desc: "足で蹴られたビール缶に巻き込まれて潰された。" } },
+                            { text: "天井からネクタイを狙って真っ直ぐ降りる", nextStep: 1 },
+                            { text: "テレビの音に紛れて堂々と正面突破", badEnd: { id: 'drunk_bad_1', title: "BAD END 1: アルコール呼気", desc: "突然豪快に寝返りをうたれ、巨大な体で押しつぶされた。" } }
+                        ]
+                    },
+                    {
+                        text: "【STEP 2/5: 着地場所】全身赤ら顔で血行抜群。どこを刺す？",
+                        choices: [
+                            { text: "赤く熟した鼻の頭", badEnd: { id: 'drunk_bad_2', title: "BAD END 2: 無意識のハエ叩き", desc: "顔の痒みに反応した豪快な平手打ちが顔面に直撃。" } },
+                            { text: "緩めたネクタイから覗く首元", badEnd: { id: 'drunk_bad_2', title: "BAD END 2: 無意識のハエ叩き", desc: "首元をボリボリ掻きむしる手に巻き込まれて死亡。" } },
+                            { text: "めくれ上がったズボンのすね（弁慶の泣き所）", nextStep: 2 },
+                            { text: "手の甲の太い血管", badEnd: { id: 'drunk_bad_2', title: "BAD END 2: 無意識のハエ叩き", desc: "手がピクッと跳ねてそのまま壁に激突した。" } },
+                            { text: "靴下を脱ぎ捨てた足の裏", badEnd: { id: 'drunk_bad_2', title: "BAD END 2: 無意識のハエ叩き", desc: "両足をゴシゴシ擦り合わせる動作に挟まれた。" } }
+                        ]
+                    },
+                    {
+                        text: "【STEP 3/5: 刺入】すねに着地した。酒で麻痺しているがいつ刺す？",
+                        choices: [
+                            { text: "「ゴォォー」と大いびきをかいた瞬間", nextStep: 3 },
+                            { text: "「う〜ん…」と唸って動きが止まった時", badEnd: { id: 'drunk_bad_3', title: "BAD END 3: 突然の蹴り出し", desc: "うなされて足を思い切り蹴り出され、壁に叩きつけられた。" } },
+                            { text: "いびきがピタッと止まった無音の瞬間", badEnd: { id: 'drunk_bad_3', title: "BAD END 3: 突然の蹴り出し", desc: "息止めは目が覚める前兆。即座に手足が動いて潰された。" } },
+                            { text: "寝返りを打って体制が変わった直後", nextStep: 3 },
+                            { text: "お腹がグーッと鳴った時", badEnd: { id: 'drunk_bad_3', title: "BAD END 3: 突然の蹴り出し", desc: "突然起き上がろうとした手に踏みつけられた。" } }
+                        ]
+                    },
+                    {
+                        text: "【STEP 4/5: 吸血】アルコール交じりの血は吸いやすい！どう吸う？",
+                        choices: [
+                            { text: "アルコールで蚊自身が酔わないよう少しずつ吸う", nextStep: 4 },
+                            { text: "勢いに任せて一気にがぶ飲みする", badEnd: { id: 'drunk_bad_4', title: "BAD END 4: 蚊の急性アルコール中毒", desc: "血中アルコール濃度が高すぎて蚊が麻痺して即死。" } },
+                            { text: "吸いながら足をモゾモゾ動かす", badEnd: { id: 'drunk_bad_4', title: "BAD END 4: 蚊の急性アルコール中毒", desc: "泥酔していても反射で足が動き、反対の足で蹴られた。" } },
+                            { text: "満腹を超えて限界まで吸う", badEnd: { id: 'drunk_bad_4', title: "BAD END 4: 蚊の急性アルコール中毒", desc: "飛べなくなりソファの隙間に落っこちて挟まった。" } },
+                            { text: "血を吸いながら羽を休める", badEnd: { id: 'drunk_bad_4', title: "BAD END 4: 蚊の急性アルコール中毒", desc: "酔っ払いの異常な体温で蚊の脚が火傷した。" } }
+                        ]
+                    },
+                    {
+                        text: "【STEP 5/5: 逃走】吸血完了！酔っ払いが「かゆいなぁ」と手を伸ばしてきた！",
+                        choices: [
+                            { text: "テーブルの上の空き缶の裏へ滑り込む", success: true, successId: 'drunk_success' },
+                            { text: "テレビの画面の裏側へ逃げる", badEnd: { id: 'drunk_bad_4', title: "BAD END 4: リモコン直撃", desc: "テレビを消そうと投げられたリモコンが直撃した。" } },
+                            { text: "天井に向かって真っ直ぐ脱出", badEnd: { id: 'drunk_bad_4', title: "BAD END 4: 天井叩き", desc: "伸びをした酔っ払いの手が天井近くまで届き潰された。" } },
+                            { text: "酔っ払いの着ているスーツのポケットに入る", badEnd: { id: 'drunk_bad_4', title: "BAD END 4: ポケット圧死", desc: "ポケットの上から押しつぶされた。" } },
+                            { text: "カーテンのひだの中に隠れる", badEnd: { id: 'drunk_bad_4', title: "BAD END 4: カーテンつかみ", desc: "立ち上がろうとしてカーテンを掴んだ手に巻き込まれた。" } }
+                        ]
+                    }
+                ]
+            },
+            catowner: {
+                steps: [
+                    {
+                        text: "【STEP 1/5: 接近】膝にネコを乗せて撫でている飼い主。最大の敵はネコだ。どう近付く？",
+                        choices: [
+                            { text: "ネコの視界に入る前方から高高度で侵入", badEnd: { id: 'catowner_bad_1', title: "BAD END 1: ネコの動体視力", desc: "ネコが超高速の猫パンチを繰り出し、空中で撃ち落とされた。" } },
+                            { text: "飼い主の背後かつネコの死角から極低空で忍び寄る", nextStep: 1 },
+                            { text: "ネコの耳元をかすめて注意を引く", badEnd: { id: 'catowner_bad_1', title: "BAD END 1: ネコの動体視力", desc: "ネコの狩猟本能に火がつき、連続ネコパンチで粉砕。" } },
+                            { text: "ネコのしっぽの先に着地してみる", badEnd: { id: 'catowner_bad_1', title: "BAD END 1: ネコの動体視力", desc: "猛烈なしっぽの振りで壁に叩きつけられた。" } },
+                            { text: "キャットタワーの頂上から急降下", nextStep: 1 }
+                        ]
+                    },
+                    {
+                        text: "【STEP 2/5: 狙い目】ネコの警戒網を潜り抜けた。飼い主のどこを刺す？",
+                        choices: [
+                            { text: "ネコを撫でている手の甲", badEnd: { id: 'catowner_bad_2', title: "BAD END 2: ネコの視線直下", desc: "ネコの手元だったためネコに見つかり一瞬で舐めとられた。" } },
+                            { text: "ネコ毛がついた靴下の上のふくらはぎ", nextStep: 2 },
+                            { text: "飼い主のあごの下", badEnd: { id: 'catowner_bad_2', title: "BAD END 2: ネコの視線直下", desc: "甘えるネコの頭突きが飼い主のあごに直撃し挟まれた。" } },
+                            { text: "肩にかかった髪の毛のすき間", badEnd: { id: 'catowner_bad_2', title: "BAD END 2: ネコの視線直下", desc: "首を振った飼い主の髪の毛に絡まって身動き不能に。" } },
+                            { text: "座布団から出ている膝小僧", badEnd: { id: 'catowner_bad_2', title: "BAD END 2: ネコの視線直下", desc: "膝の上にネコが飛び乗ってきて踏み潰された。" } }
+                        ]
+                    },
+                    {
+                        text: "【STEP 3/5: 針刺入】ふくらはぎに着地した。刺すタイミングは？",
+                        choices: [
+                            { text: "ネコがゴロゴロと喉を鳴らして目を細めた時", nextStep: 3 },
+                            { text: "飼い主が「かわいいねぇ」と声をかけた時", badEnd: { id: 'catowner_bad_3', title: "BAD END 3: 声の振動", desc: "体の振動で異物感が強調され、飼い主の手が飛んできた。" } },
+                            { text: "ネコがおもちゃに飛びついた瞬間", badEnd: { id: 'catowner_bad_3', title: "BAD END 3: 声の振動", desc: "跳躍したネコがふくらはぎに着地しペシャンコになった。" } },
+                            { text: "飼い主がネコ動画に夢中になっている時", nextStep: 3 },
+                            { text: "部屋の全自動掃除機が動き出した時", badEnd: { id: 'catowner_bad_3', title: "BAD END 3: 声の振動", desc: "掃除機の強力な排風に煽られて吹き飛ばされた。" } }
+                        ]
+                    },
+                    {
+                        text: "【STEP 4/5: 吸血】血を吸い始めた。ネコの耳がピクッと動いた！どうする？",
+                        choices: [
+                            { text: "羽音を一切立てず、息を殺して静かに吸い続ける", nextStep: 4 },
+                            { text: "慌てて針を抜いて1センチ浮上する", badEnd: { id: 'catowner_bad_4', title: "BAD END 4: ネコの爪", desc: "浮上した瞬間の空気の揺らぎを察知され爪で引き裂かれた。" } },
+                            { text: "急いで残りの血を一気飲みする", badEnd: { id: 'catowner_bad_4', title: "BAD END 4: ネコの爪", desc: "飼い主が足に力を入れ皮膚が硬くなり針が抜けなくなった。" } },
+                            { text: "ネコの毛穴の陰に隠れる", badEnd: { id: 'catowner_bad_4', title: "BAD END 4: ネコの爪", desc: "抜け毛に足をとられ絡まって動けなくなった。" } },
+                            { text: "吸うのをやめて死んだふりをする", badEnd: { id: 'catowner_bad_4', title: "BAD END 4: ネコの爪", desc: "近寄ってきたネコに匂いを嗅がれパクッと食べられた。" } }
+                        ]
+                    },
+                    {
+                        text: "【STEP 5/5: 命がけの逃走】吸血完了！ネコがハンターの目でこちらを凝視している！",
+                        choices: [
+                            { text: "高く舞い上がり天井付近へ逃げる", badEnd: { id: 'catowner_bad_4', title: "BAD END 4: 天井跳躍", desc: "ネコの驚異的なジャンプ力で空中キャッチされた。" } },
+                            { text: "ソファの下の僅か1cmの隙間へ滑り込む", success: true, successId: 'catowner_success' },
+                            { text: "カーテンのうらに急降下", badEnd: { id: 'catowner_bad_4', title: "BAD END 4: カーテン登り", desc: "ネコがカーテンを駆け登ってきてバリバリに引き裂かれた。" } },
+                            { text: "飼い主の背中に張り付く", badEnd: { id: 'catowner_bad_4', title: "BAD END 4: 背もたれ圧死", desc: "ソファに体重をかけた飼い主の背中で押しつぶされた。" } },
+                            { text: "キャットタワーの穴の中に逃げ込む", badEnd: { id: 'catowner_bad_4', title: "BAD END 4: 敵の本陣", desc: "ネコの家の中に自ら飛び込んでしまい一瞬で食べられた。" } }
+                        ]
+                    }
+                ]
+            }
+        };
+
+        // Render UI
+        function renderUI() {
+            const gameCard = document.getElementById('game-card');
+            const targetNameEl = document.getElementById('target-name');
+            const stageStepEl = document.getElementById('stage-step');
+            const sceneBgIcon = document.getElementById('scene-bg-icon');
+            const targetStatusBadge = document.getElementById('target-status-badge');
+            const storyTextEl = document.getElementById('story-text');
+            const choicesContainer = document.getElementById('choices-container');
+            const endingContainer = document.getElementById('ending-container');
+
+            // Reset Card Style
+            gameCard.className = "w-full max-w-xl blood-card rounded-3xl p-5 sm:p-8 relative overflow-hidden my-auto border transition-all duration-500";
+
+            if (currentState === 'select_target') {
+                stopTimer();
+                targetNameEl.innerHTML = `<i class="fa-solid fa-crosshairs"></i> ターゲット選択中`;
+                stageStepEl.innerText = `STEP 0/5`;
+                sceneBgIcon.innerHTML = `<i class="fa-solid fa-mosquito"></i>`;
+                targetStatusBadge.innerText = `獲物を探せ！`;
+                storyTextEl.innerHTML = `【主人公：１匹の命がけの蚊】<br>あなたの空腹度は限界だ。今夜中に人間の血を吸わなければ餓死してしまう……。部屋には5人の人間がいる。死の危険を冒し、誰の血を狙う？`;
+
+                endingContainer.classList.add('hidden');
+                choicesContainer.classList.remove('hidden');
+                choicesContainer.innerHTML = '';
+
+                for (const key in targetsInfo) {
+                    const info = targetsInfo[key];
+                    const isCleared = clearedTargets[key];
+                    const btn = document.createElement('button');
+
+                    if (isCleared) {
+                        btn.className = "w-full py-3 px-4 bg-slate-900/80 border border-slate-800 text-slate-500 font-bold text-xs sm:text-sm rounded-2xl flex items-center justify-between cursor-not-allowed opacity-60";
+                        btn.innerHTML = `
+                            <span class="flex items-center gap-2"><i class="fa-solid ${info.icon}"></i> ${info.name}</span>
+                            <span class="text-yellow-400 font-pixel"><i class="fa-solid fa-crown"></i> CLEAR!</span>
+                        `;
+                        btn.disabled = true;
+                    } else {
+                        btn.className = "choice-btn w-full py-3 px-4 bg-slate-900/90 border border-red-900/50 hover:bg-red-950/40 text-slate-200 font-bold text-xs sm:text-sm rounded-2xl flex items-center justify-between cursor-pointer transition";
+                        btn.innerHTML = `
+                            <span class="flex items-center gap-2 ${info.color}"><i class="fa-solid ${info.icon}"></i> ${info.name}</span>
+                            <span class="text-xs text-red-400 font-pixel">吸血開始 <i class="fa-solid fa-chevron-right text-[10px]"></i></span>
+                        `;
+                        btn.onclick = () => selectTarget(key);
+                    }
+                    choicesContainer.appendChild(btn);
+                }
+            } else if (currentState === 'in_step') {
+                startTimer();
+                const info = targetsInfo[currentTargetKey];
+                const stepData = scenarios[currentTargetKey].steps[currentStepIndex];
+
+                targetNameEl.innerHTML = `<i class="fa-solid ${info.icon} ${info.color}"></i> ${info.name}`;
+                stageStepEl.innerText = `STEP ${currentStepIndex + 1}/5`;
+                sceneBgIcon.innerHTML = `<i class="fa-solid ${info.icon} ${info.color}"></i>`;
+                targetStatusBadge.innerText = `ターゲット追跡中`;
+                storyTextEl.innerHTML = stepData.text;
+
+                endingContainer.classList.add('hidden');
+                choicesContainer.classList.remove('hidden');
+                choicesContainer.innerHTML = '';
+
+                stepData.choices.forEach((choice) => {
+                    const btn = document.createElement('button');
+                    btn.className = "choice-btn w-full py-2.5 px-4 bg-slate-900/90 border border-slate-700/80 hover:bg-red-950/50 text-slate-200 text-xs sm:text-sm rounded-xl text-left cursor-pointer transition flex items-center justify-between group";
+                    btn.innerHTML = `
+                        <span class="group-hover:text-red-300 transition">${choice.text}</span>
+                        <i class="fa-solid fa-angles-right text-slate-600 group-hover:text-red-400 text-xs"></i>
+                    `;
+                    btn.onclick = () => handleChoice(choice);
+                    choicesContainer.appendChild(btn);
+                });
+            } else if (currentState === 'ending') {
+                stopTimer();
+                choicesContainer.classList.add('hidden');
+                endingContainer.classList.remove('hidden');
+            }
+        }
+
+        function handleTimeOut() {
+            initAudio();
+            playSlapSound();
+            showBadEnd({
+                id: 'timeout_bad',
+                title: "BAD END: タイムアップ（迷いによる死亡）",
+                desc: "60秒間迷ってホバリングしている間に羽音で完全に警戒され、容赦ない両手挟み撃ち（拍手）で潰された！蚊の世界に「迷い」は禁物だ。"
+            });
+        }
+
+        // Show Bad End Function
+        function showBadEnd(badEndData) {
+            currentState = 'ending';
+            if (badEndData.id) {
+                unlockedEndings.add(badEndData.id);
+            }
+            renderUI();
+
+            const gameCard = document.getElementById('game-card');
+            gameCard.classList.add('slapped-shake');
+            setTimeout(() => {
+                gameCard.classList.remove('slapped-shake');
+            }, 500);
+
+            document.getElementById('ending-badge').className = "inline-block px-4 py-1 rounded-full text-xs font-bold font-pixel mb-2 bg-red-950 border border-red-600 text-red-400";
+            document.getElementById('ending-badge').innerText = "BAD END (叩かれ即死)";
+            document.getElementById('ending-title').innerText = badEndData.title;
+            document.getElementById('ending-desc').innerText = badEndData.desc;
+
+            document.getElementById('scene-bg-icon').innerHTML = `<i class="fa-solid fa-skull-crossbones text-red-600 animate-pulse"></i>`;
+            document.getElementById('target-status-badge').innerText = "吸血失敗・死亡";
+            document.getElementById('next-target-btn').style.display = 'flex';
+        }
+
+        function handleChoice(choice) {
+            initAudio();
+            if (choice.badEnd) {
+                playSlapSound();
+                showBadEnd(choice.badEnd);
+            } else if (choice.success) {
+                clearedTargets[currentTargetKey] = true;
+                if (choice.successId) unlockedEndings.add(choice.successId);
+                
+                const clearedCount = updateProgressUI();
+                if (clearedCount >= 5) {
+                    playKingFanfare();
+                    showKingEnding();
+                } else {
+                    playSuccessSound();
+                    showSuccessEnd();
+                }
+            } else if (choice.nextStep !== undefined) {
+                playBuzzSound();
+                currentStepIndex = choice.nextStep;
+                renderUI();
+            }
+        }
+
+        // Fisher-Yates Shuffle Algorithm for Randomizing Choices
+        function shuffleArray(array) {
+            const arr = [...array];
+            for (let i = arr.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [arr[i], arr[j]] = [arr[j], arr[i]];
+            }
+            return arr;
+        }
+
+        // Render UI
+        function renderUI() {
+            const gameCard = document.getElementById('game-card');
+            const targetNameEl = document.getElementById('target-name');
+            const stageStepEl = document.getElementById('stage-step');
+            const sceneBgIcon = document.getElementById('scene-bg-icon');
+            const targetStatusBadge = document.getElementById('target-status-badge');
+            const storyTextEl = document.getElementById('story-text');
+            const choicesContainer = document.getElementById('choices-container');
+            const endingContainer = document.getElementById('ending-container');
+
+            // Reset Card Style
+            gameCard.className = "w-full max-w-xl blood-card rounded-3xl p-5 sm:p-8 relative overflow-hidden my-auto border transition-all duration-500";
+
+            if (currentState === 'select_target') {
+                stopTimer();
+                targetNameEl.innerHTML = `<i class="fa-solid fa-crosshairs"></i> ターゲット選択中`;
+                stageStepEl.innerText = `STEP 0/5`;
+                sceneBgIcon.innerHTML = `<i class="fa-solid fa-mosquito"></i>`;
+                targetStatusBadge.innerText = `獲物を探せ！`;
+                storyTextEl.innerHTML = `【主人公：１匹の命がけの蚊】<br>あなたの空腹度は限界だ。今夜中に人間の血を吸わなければ餓死してしまう……。部屋には5人の人間がいる。死の危険を冒し、誰の血を狙う？`;
+
+                endingContainer.classList.add('hidden');
+                choicesContainer.classList.remove('hidden');
+                choicesContainer.innerHTML = '';
+
+                for (const key in targetsInfo) {
+                    const info = targetsInfo[key];
+                    const isCleared = clearedTargets[key];
+                    const btn = document.createElement('button');
+
+                    if (isCleared) {
+                        btn.className = "w-full py-3 px-4 bg-slate-900/80 border border-slate-800 text-slate-500 font-bold text-xs sm:text-sm rounded-2xl flex items-center justify-between cursor-not-allowed opacity-60";
+                        btn.innerHTML = `
+                            <span class="flex items-center gap-2"><i class="fa-solid ${info.icon}"></i> ${info.name}</span>
+                            <span class="text-yellow-400 font-pixel"><i class="fa-solid fa-crown"></i> CLEAR!</span>
+                        `;
+                        btn.disabled = true;
+                    } else {
+                        btn.className = "choice-btn w-full py-3 px-4 bg-slate-900/90 border border-red-900/50 hover:bg-red-950/40 text-slate-200 font-bold text-xs sm:text-sm rounded-2xl flex items-center justify-between cursor-pointer transition";
+                        btn.innerHTML = `
+                            <span class="flex items-center gap-2 ${info.color}"><i class="fa-solid ${info.icon}"></i> ${info.name}</span>
+                            <span class="text-xs text-red-400 font-pixel">吸血開始 <i class="fa-solid fa-chevron-right text-[10px]"></i></span>
+                        `;
+                        btn.onclick = () => selectTarget(key);
+                    }
+                    choicesContainer.appendChild(btn);
+                }
+            } else if (currentState === 'in_step') {
+                startTimer();
+                const info = targetsInfo[currentTargetKey];
+                const stepData = scenarios[currentTargetKey].steps[currentStepIndex];
+
+                targetNameEl.innerHTML = `<i class="fa-solid ${info.icon} ${info.color}"></i> ${info.name}`;
+                stageStepEl.innerText = `STEP ${currentStepIndex + 1}/5`;
+                sceneBgIcon.innerHTML = `<i class="fa-solid ${info.icon} ${info.color}"></i>`;
+                targetStatusBadge.innerText = `ターゲット追跡中`;
+                storyTextEl.innerHTML = stepData.text;
+
+                endingContainer.classList.add('hidden');
+                choicesContainer.classList.remove('hidden');
+                choicesContainer.innerHTML = '';
+
+                // Randomize choices order for each step
+                const shuffledChoices = shuffleArray(stepData.choices);
+
+                shuffledChoices.forEach((choice) => {
+                    const btn = document.createElement('button');
+                    btn.className = "choice-btn w-full py-2.5 px-4 bg-slate-900/90 border border-slate-700/80 hover:bg-red-950/50 text-slate-200 text-xs sm:text-sm rounded-xl text-left cursor-pointer transition flex items-center justify-between group";
+                    btn.innerHTML = `
+                        <span class="group-hover:text-red-300 transition">${choice.text}</span>
+                        <i class="fa-solid fa-angles-right text-slate-600 group-hover:text-red-400 text-xs"></i>
+                    `;
+                    btn.onclick = () => handleChoice(choice);
+                    choicesContainer.appendChild(btn);
+                });
+            } else if (currentState === 'ending') {
+                stopTimer();
+                choicesContainer.classList.add('hidden');
+                endingContainer.classList.remove('hidden');
+            }
+        }
+
+        function showSuccessEnd() {
+            currentState = 'ending';
+            renderUI();
+
+            document.getElementById('ending-badge').className = "inline-block px-4 py-1 rounded-full text-xs font-bold font-pixel mb-2 bg-emerald-950 border border-emerald-500 text-emerald-400";
+            document.getElementById('ending-badge').innerText = "MISSION SUCCESS (吸血・脱出成功)";
+            document.getElementById('ending-title').innerText = "血を吸い尽くして生還！";
+            document.getElementById('ending-desc').innerText = `【サバイバル成功】\n人間の目を鮮やかにあざむき、新鮮で上質な血をたっぷり吸うことに成功した！あなたは闇の中へ消えていった……。（満腹度 +20%）`;
+
+            document.getElementById('scene-bg-icon').innerHTML = `<i class="fa-solid fa-droplet text-red-500 animate-bounce"></i>`;
+            document.getElementById('target-status-badge').innerText = "満腹度アップ！";
+            document.getElementById('next-target-btn').style.display = 'flex';
+        }
+
+        function showKingEnding() {
+            currentState = 'ending';
+            renderUI();
+
+            const gameCard = document.getElementById('game-card');
+            gameCard.className = "w-full max-w-xl king-card rounded-3xl p-5 sm:p-8 relative overflow-hidden my-auto border transition-all duration-500";
+
+            document.getElementById('ending-badge').className = "inline-block px-4 py-1 rounded-full text-xs font-bold font-pixel mb-2 bg-yellow-500 text-black font-black animate-pulse";
+            document.getElementById('ending-badge').innerText = "👑 TRUE HAPPY END (満腹度 100%)";
+            document.getElementById('ending-title').innerText = "👑 蚊の王様 (KING OF MOSQUITOES)";
+            document.getElementById('ending-desc').innerText = "【伝説達成】\n部屋にいた5人の人間（受験生・筋肉男・ゲーマー・酔っ払い・飼い主）すべての命がけの防衛網を突破し、完全ノーミスで血を吸い尽くした！あなたは今夜、生態系の頂点に立つ「蚊の王様」となった！";
+
+            document.getElementById('scene-bg-icon').innerHTML = `<i class="fa-solid fa-crown text-yellow-400 text-6xl animate-bounce"></i>`;
+            document.getElementById('target-status-badge').innerText = "完全制覇 - FULLY SATISFIED";
+            document.getElementById('next-target-btn').style.display = 'none';
+        }
+
+        function updateProgressUI() {
+            let clearedCount = 0;
+            for (const key in clearedTargets) {
+                const badgeEl = document.getElementById(`badge-${key}`);
+                if (clearedTargets[key]) {
+                    clearedCount++;
+                    if (badgeEl) {
+                        badgeEl.className = "flex flex-col items-center opacity-100 font-bold text-yellow-400 transition-all duration-300 scale-110";
+                        badgeEl.querySelector('i').className = "fa-solid fa-crown text-yellow-400 text-base mb-0.5 animate-bounce";
+                    }
+                }
+            }
+            const fullnessPercent = clearedCount * 20;
+            document.getElementById('cleared-count').innerText = `${fullnessPercent}%`;
+            return clearedCount;
+        }
+
+        // Collection Modal Render
+        function updateCollectionUI() {
+            const listEl = document.getElementById('collection-list');
+            const rateTextEl = document.getElementById('collection-rate-text');
+            const badgeCountEl = document.getElementById('collection-badge-count');
+
+            if (!listEl) return;
+
+            listEl.innerHTML = '';
+            const unlockedCount = unlockedEndings.size;
+            const totalCount = allEndingsList.length;
+            const percentage = Math.round((unlockedCount / totalCount) * 100);
+
+            rateTextEl.innerText = `${unlockedCount} / ${totalCount} (${percentage}%)`;
+            badgeCountEl.innerText = `${unlockedCount}/${totalCount}`;
+
+            allEndingsList.forEach((item) => {
+                const isUnlocked = unlockedEndings.has(item.id);
+                const card = document.createElement('div');
+
+                if (isUnlocked) {
+                    const isSuccess = item.type === 'success';
+                    card.className = `p-3 rounded-xl border ${isSuccess ? 'bg-emerald-950/60 border-emerald-500/50 text-emerald-200' : 'bg-red-950/40 border-red-800/50 text-slate-200'}`;
+                    card.innerHTML = `
+                        <div class="flex items-center justify-between font-pixel font-bold mb-1">
+                            <span class="${isSuccess ? 'text-emerald-400' : 'text-red-400'}">${item.title}</span>
+                            <span class="text-[10px] px-2 py-0.5 rounded ${isSuccess ? 'bg-emerald-900 text-emerald-300' : 'bg-red-900 text-red-300'}">${isSuccess ? 'SUCCESS' : 'BAD END'}</span>
+                        </div>
+                        <p class="text-[11px] text-slate-300 leading-snug">${item.desc}</p>
+                    `;
+                } else {
+                    card.className = "p-3 rounded-xl border bg-slate-950 border-slate-800 text-slate-600";
+                    card.innerHTML = `
+                        <div class="flex items-center justify-between font-pixel font-bold mb-1">
+                            <span>??? [未解放]</span>
+                            <i class="fa-solid fa-lock text-slate-600 text-xs"></i>
+                        </div>
+                        <p class="text-[11px] text-slate-700">このエンディングはまだ発見されていません。</p>
+                    `;
+                }
+                listEl.appendChild(card);
+            });
+        }
+
+        // Reset progress and collection on retry
+        function resetAllProgress() {
+            unlockedEndings.clear();
+            for (const key in clearedTargets) {
+                clearedTargets[key] = false;
+                const badgeEl = document.getElementById(`badge-${key}`);
+                if (badgeEl) {
+                    badgeEl.className = "flex flex-col items-center opacity-40 transition-all duration-300";
+                    const iconEl = badgeEl.querySelector('i');
+                    if (iconEl) {
+                        const originalIcons = {
+                            student: 'fa-user-graduate',
+                            macho: 'fa-dumbbell',
+                            gamer: 'fa-gamepad',
+                            drunk: 'fa-beer-mug-empty',
+                            catowner: 'fa-cat'
+                        };
+                        iconEl.className = `fa-solid ${originalIcons[key]} text-slate-400 text-base mb-0.5`;
+                    }
+                }
+            }
+            updateProgressUI();
+            updateCollectionUI();
+        }
+
+        // Event Listeners for Collection Modal
+        document.getElementById('open-collection-btn').addEventListener('click', () => {
+            initAudio();
+            updateCollectionUI();
+            document.getElementById('collection-modal').classList.remove('hidden');
+        });
+
+        document.getElementById('close-collection-btn').addEventListener('click', () => {
+            document.getElementById('collection-modal').classList.add('hidden');
+        });
+
+        // Retry button (resets all progress for 100% full challenge)
+        document.getElementById('retry-btn').addEventListener('click', () => {
+            initAudio();
+            playBuzzSound();
+            resetAllProgress();
+            currentState = 'select_target';
+            renderUI();
+        });
+
+        // Next target (Go to select screen)
+        document.getElementById('next-target-btn').addEventListener('click', () => {
+            initAudio();
+            playBuzzSound();
+            currentState = 'select_target';
+            renderUI();
+        });
+
+        // Initialize Game
+        window.onload = () => {
+            updateProgressUI();
+            updateCollectionUI();
+            renderUI();
+        };
+    </script>
+</body>
+</html>

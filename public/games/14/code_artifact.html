@@ -1,0 +1,1592 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Cyber Danmaku - Bullet Hell Shooter</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif, 'Noto Sans JP';
+            background-color: #05050d;
+            color: #ffffff;
+            overflow: hidden;
+            touch-action: none;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .glow-text-cyan {
+            text-shadow: 0 0 10px rgba(0, 240, 255, 0.8), 0 0 20px rgba(0, 240, 255, 0.5);
+        }
+        .glow-text-pink {
+            text-shadow: 0 0 10px rgba(255, 0, 128, 0.8), 0 0 20px rgba(255, 0, 128, 0.5);
+        }
+        .glow-text-gold {
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.8), 0 0 20px rgba(255, 215, 0, 0.5);
+        }
+
+        .glass-panel {
+            background: rgba(10, 15, 30, 0.85);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(0, 240, 255, 0.3);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+            border-radius: 12px;
+        }
+
+        #gameContainer {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            max-width: 900px;
+            max-height: 1000px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        canvas {
+            display: block;
+            background-color: #000;
+            border-radius: 8px;
+            border: 1px solid rgba(0, 240, 255, 0.3);
+            box-shadow: 0 0 30px rgba(0, 240, 255, 0.15);
+            touch-action: none;
+        }
+
+        /* Overlay UI Screens */
+        .overlay-screen {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            text-align: center;
+            z-index: 20;
+            overflow-y: auto;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* Touch Control Elements */
+        #touchControls {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 16px;
+            z-index: 10;
+        }
+
+        .touch-btn {
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+            user-select: none;
+            touch-action: none;
+            pointer-events: auto;
+        }
+        .touch-btn:active {
+            background: rgba(0, 240, 255, 0.4);
+        }
+
+        .btn-primary {
+            padding: 12px 32px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            border-radius: 9999px;
+            border: none;
+            background: linear-gradient(90deg, #00f0ff, #0066ff);
+            color: white;
+            box-shadow: 0 4px 15px rgba(0, 240, 255, 0.4);
+            cursor: pointer;
+            transition: transform 0.15s ease;
+        }
+        .btn-primary:active {
+            transform: scale(0.95);
+        }
+
+        .btn-secondary {
+            padding: 10px 24px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            border-radius: 9999px;
+            border: 1px solid rgba(0, 240, 255, 0.3);
+            background: #1e293b;
+            color: #e2e8f0;
+            cursor: pointer;
+        }
+
+        /* Responsive Layout Tweaks */
+        .info-card {
+            background: rgba(15, 23, 42, 0.9);
+            border: 1px solid rgba(0, 240, 255, 0.3);
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 20px;
+            text-align: left;
+            font-size: 0.85rem;
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 6px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Game Container -->
+    <div id="gameContainer">
+        
+        <!-- Main Canvas Area -->
+        <div style="position: relative; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
+            <canvas id="gameCanvas"></canvas>
+
+            <!-- Touch Controls Overlay -->
+            <div id="touchControls" class="hidden">
+                <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                    <button id="touchPauseBtn" style="pointer-events: auto; background: rgba(30,41,59,0.8); border: 1px solid rgba(0,240,255,0.5); color: #00f0ff; padding: 6px 12px; border-radius: 6px; font-weight: bold; font-size: 12px;">PAUSE</button>
+                    <div style="font-size: 12px; color: rgba(0,240,255,0.7);">Drag to Move / Auto Shot</div>
+                </div>
+                
+                <div id="touchBtnContainer" style="display: flex; justify-content: flex-end; align-items: flex-end; padding-bottom: 80px; gap: 12px; pointer-events: none;">
+                    <div id="touchFocusBtn" class="touch-btn" style="width: 60px; height: 60px; background: rgba(0, 240, 255, 0.2); border-color: rgba(0,240,255,0.5); font-size: 12px; color: #00f0ff;">
+                        SLOW
+                    </div>
+                    <div id="touchBombBtn" class="touch-btn glow-text-pink" style="width: 72px; height: 72px; background: rgba(255, 0, 128, 0.3); border-color: #ff0080; font-size: 14px; font-weight: 900; color: #ffb3d9;">
+                        BOMB
+                    </div>
+                </div>
+            </div>
+
+            <!-- Title Screen -->
+            <div id="titleScreen" class="overlay-screen glass-panel">
+                <h1 class="glow-text-cyan" style="font-size: 2.2rem; font-weight: 900; font-style: italic; background: linear-gradient(90deg, #00f0ff, #e0f7fa, #ff0080); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 4px;">
+                    CYBER DANMAKU
+                </h1>
+                <p style="font-size: 0.75rem; color: #00f0ff; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 12px;">Bullet Hell Shooter</p>
+
+                <!-- High Score Banner -->
+                <div style="margin-bottom: 12px; font-size: 0.8rem; color: #ffd700; font-weight: bold; background: rgba(69, 26, 3, 0.6); border: 1px solid rgba(245, 158, 11, 0.4); padding: 4px 16px; border-radius: 9999px;">
+                    HIGH SCORE: <span id="titleHighScore">0</span>
+                </div>
+
+                <!-- Touch Button Layout Option -->
+                <div style="margin-bottom: 16px; display: flex; align-items: center; gap: 8px; background: rgba(15, 23, 42, 0.9); border: 1px solid rgba(0, 240, 255, 0.4); padding: 6px 16px; border-radius: 9999px;">
+                    <span style="font-size: 0.75rem; color: #cbd5e1; font-weight: bold;">TOUCH BUTTONS:</span>
+                    <button id="layoutToggleBtn" style="font-size: 0.75rem; font-weight: bold; padding: 4px 12px; background: #0891b2; border: none; border-radius: 9999px; color: white; cursor: pointer;">
+                        RIGHT SIDE (右配置)
+                    </button>
+                </div>
+
+                <div class="info-card">
+                    <div style="color: #00f0ff; font-weight: bold; border-bottom: 1px solid rgba(0,240,255,0.2); padding-bottom: 4px; margin-bottom: 8px;">CONTROLS (操作方法)</div>
+                    <div class="info-row"><span style="color: #94a3b8;">Move (移動):</span> <span>[Arrow Keys] / [WASD] / Drag</span></div>
+                    <div class="info-row"><span style="color: #94a3b8;">Shoot (攻撃):</span> <span>Auto Fire (自動連射)</span></div>
+                    <div class="info-row"><span style="color: #94a3b8;">Focus Mode (低速):</span> <span>Hold [Shift] / SLOW Button</span></div>
+                    <div class="info-row"><span style="color: #94a3b8;">Spell Bomb (ボム):</span> <span>[X] / BOMB Button</span></div>
+                    <div class="info-row"><span style="color: #94a3b8;">Pause (一時停止):</span> <span>[P] or [Esc]</span></div>
+                    <div class="info-row" style="color: #ffd700; font-weight: bold; margin-top: 6px;"><span style="color: #fbbf24;">GRAZE Perk:</span> <span>30 & 60 Graze unlocks Homing Bits!</span></div>
+                </div>
+
+                <button id="startBtn" class="btn-primary">START GAME</button>
+            </div>
+
+            <!-- Pause Screen -->
+            <div id="pauseScreen" class="overlay-screen glass-panel hidden">
+                <h2 class="glow-text-cyan" style="font-size: 2rem; font-weight: 900; color: #00f0ff; margin-bottom: 16px;">GAME PAUSED</h2>
+                <div style="display: flex; flex-direction: column; gap: 12px; width: 180px;">
+                    <button id="resumeBtn" class="btn-primary" style="padding: 10px;">RESUME</button>
+                    <button id="restartPauseBtn" class="btn-secondary">RESTART</button>
+                    <button id="returnTitleBtn" class="btn-secondary" style="color: #f43f5e; border-color: rgba(244,63,94,0.4);">TITLE</button>
+                </div>
+            </div>
+
+            <!-- Game Over Screen -->
+            <div id="gameOverScreen" class="overlay-screen glass-panel hidden">
+                <h2 class="glow-text-pink" style="font-size: 2.5rem; font-weight: 900; color: #ff0080; margin-bottom: 4px;">GAME OVER</h2>
+                <p style="color: #94a3b8; font-size: 0.85rem; margin-bottom: 16px;">The cyber realm was overwhelmed...</p>
+                
+                <div class="info-card" style="width: 240px; margin-bottom: 20px;">
+                    <div class="info-row"><span style="color: #94a3b8;">Score:</span> <span id="finalScore" style="font-weight: bold; color: #fff;">0</span></div>
+                    <div class="info-row"><span style="color: #94a3b8;">Graze:</span> <span id="finalGraze" style="font-weight: bold; color: #00f0ff;">0</span></div>
+                    <div class="info-row"><span style="color: #94a3b8;">High Score:</span> <span id="finalHighScore" style="font-weight: bold; color: #ffd700;">0</span></div>
+                </div>
+
+                <div style="display: flex; gap: 12px; flex-wrap: wrap; justify-content: center;">
+                    <button id="retryBtn" class="btn-primary" style="background: linear-gradient(90deg, #ff0080, #e11d48);">TRY AGAIN</button>
+                    <button id="gameOverTitleBtn" class="btn-secondary" style="color: #00f0ff; border-color: rgba(0, 240, 255, 0.4);">TITLE</button>
+                </div>
+            </div>
+
+            <!-- Game Clear Screen -->
+            <div id="gameClearScreen" class="overlay-screen glass-panel hidden">
+                <h2 class="glow-text-gold" style="font-size: 2.2rem; font-weight: 900; color: #ffd700; margin-bottom: 4px;">ALL STAGES CLEARED!</h2>
+                <p style="color: #67e8f9; font-size: 0.85rem; margin-bottom: 16px;">Masterful dodging! Mission Accomplished!</p>
+
+                <div class="info-card" style="width: 260px; margin-bottom: 20px;">
+                    <div class="info-row"><span style="color: #94a3b8;">Final Score:</span> <span id="clearScore" style="font-weight: bold; color: #fff; font-size: 1rem;">0</span></div>
+                    <div class="info-row"><span style="color: #94a3b8;">Graze Count:</span> <span id="clearGraze" style="font-weight: bold; color: #00f0ff;">0</span></div>
+                    <div class="info-row"><span style="color: #94a3b8;">No-Miss Bonus:</span> <span id="clearNoMiss" style="font-weight: bold; color: #ffd700;">0</span></div>
+                </div>
+
+                <div style="display: flex; gap: 12px; flex-wrap: wrap; justify-content: center;">
+                    <button id="clearRetryBtn" class="btn-primary" style="background: linear-gradient(90deg, #fbbf24, #d97706); color: #000;">PLAY AGAIN</button>
+                    <button id="clearTitleBtn" class="btn-secondary" style="color: #00f0ff; border-color: rgba(0, 240, 255, 0.4);">TITLE</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+<script>
+class SoundEffects {
+    constructor() {
+        this.ctx = null;
+        this.initialized = false;
+        
+        // BGM 制御用
+        this.bgmTimer = null;
+        this.bgmStep = 0;
+        this.bgmPlaying = false;
+        this.currentMode = null; // 'TITLE', 'BOSS', 'GAMEOVER', 'CLEAR'
+        
+        // --- ボス戦闘用 BGM ノート ---
+        this.bassNotes = [
+            110.00, 110.00, 110.00, 110.00, // A2
+            87.31,  87.31,  87.31,  87.31,  // F2
+            98.00,  98.00,  98.00,  98.00,  // G2
+            82.41,  82.41,  82.41,  82.41   // E2
+        ];
+        this.leadNotes = [
+            440.00, 523.25, 659.25, 880.00, 783.99, 659.25, 523.25, 440.00, // A minor
+            349.23, 440.00, 523.25, 698.46, 659.25, 523.25, 440.00, 349.23, // F major
+            392.00, 493.88, 587.33, 783.99, 698.46, 587.33, 493.88, 392.00, // G major
+            329.63, 415.30, 493.88, 659.25, 587.33, 493.88, 415.30, 329.63  // E minor
+        ];
+
+        // --- タイトル用 BGM ノート（静かでミステリアスなアルペジオ） ---
+        this.titleNotes = [
+            220.00, 329.63, 440.00, 523.25, 659.25, 523.25, 440.00, 329.63, // Am
+            174.61, 261.63, 349.23, 440.00, 523.25, 440.00, 349.23, 261.63, // F
+            196.00, 293.66, 392.00, 493.88, 587.33, 493.88, 392.00, 293.66, // G
+            164.81, 246.94, 329.63, 415.30, 493.88, 415.30, 329.63, 246.94  // E
+        ];
+
+        // --- ゲームオーバー用 BGM ノート（儚く切ないアルペジオ） ---
+        this.gameOverNotes = [
+            220.00, 261.63, 329.63, 261.63, 220.00, 196.00, 174.61, 164.81,
+            207.65, 246.94, 329.63, 246.94, 207.65, 174.61, 164.81, 130.81
+        ];
+
+        // --- ゲームクリア用 BGM ノート（メジャー進行のファンファーレ） ---
+        this.clearNotes = [
+            523.25, 659.25, 783.99, 1046.50, 659.25, 783.99, 1046.50, 1318.51, // C Major
+            587.33, 698.46, 880.00, 1174.66, 698.46, 880.00, 1174.66, 1396.91, // F / G Major
+            659.25, 783.99, 987.77, 1318.51, 783.99, 987.77, 1318.51, 1567.98,
+            1046.50, 1046.50, 1046.50, 1046.50, 1046.50, 1046.50, 1046.50, 1046.50
+        ];
+    }
+
+    init() {
+        if (this.initialized) return;
+        try {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            if (AudioCtx) {
+                this.ctx = new AudioCtx();
+                this.initialized = true;
+            }
+        } catch (e) {
+            console.warn("AudioContext not supported");
+        }
+    }
+
+    playBGM(mode = 'BOSS') {
+        this.init();
+        if (this.bgmPlaying && this.currentMode === mode) return;
+        this.stopBGM();
+
+        this.bgmPlaying = true;
+        this.currentMode = mode;
+        this.bgmStep = 0;
+
+        let interval = 100; // デフォルト (150 BPM 16分音符)
+        if (mode === 'TITLE') interval = 160;
+        if (mode === 'GAMEOVER') interval = 220;
+        if (mode === 'CLEAR') interval = 120;
+
+        this.bgmTimer = setInterval(() => {
+            if (this.ctx && this.bgmPlaying) {
+                if (this.currentMode === 'BOSS') this.playBossStep();
+                else if (this.currentMode === 'TITLE') this.playTitleStep();
+                else if (this.currentMode === 'GAMEOVER') this.playGameOverStep();
+                else if (this.currentMode === 'CLEAR') this.playClearStep();
+
+                this.bgmStep = (this.bgmStep + 1) % 32;
+            }
+        }, interval);
+    }
+
+    // 後方互換性のため維持
+    startBGM() {
+        this.playBGM('BOSS');
+    }
+
+    stopBGM() {
+        this.bgmPlaying = false;
+        this.currentMode = null;
+        if (this.bgmTimer) {
+            clearInterval(this.bgmTimer);
+            this.bgmTimer = null;
+        }
+    }
+
+    playTitleStep() {
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+
+        // 静かなアンビエントリード（音量を 0.04 -> 0.12 にアップ）
+        const freq = this.titleNotes[this.bgmStep % this.titleNotes.length];
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, now);
+
+        gain.gain.setValueAtTime(0.12, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.35);
+
+        // 深みのある低音サブベース（音量を 0.08 -> 0.18 にアップ）
+        if (this.bgmStep % 8 === 0) {
+            const bassOsc = this.ctx.createOscillator();
+            const bassGain = this.ctx.createGain();
+            bassOsc.type = 'triangle';
+            bassOsc.frequency.setValueAtTime(freq / 2, now);
+
+            bassGain.gain.setValueAtTime(0.18, now);
+            bassGain.gain.exponentialRampToValueAtTime(0.001, now + 1.2);
+
+            bassOsc.connect(bassGain);
+            bassGain.connect(this.ctx.destination);
+            bassOsc.start(now);
+            bassOsc.stop(now + 1.2);
+        }
+    }
+
+    playGameOverStep() {
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+
+        const freq = this.gameOverNotes[this.bgmStep % this.gameOverNotes.length];
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(freq, now);
+
+        // マイルドなローパスフィルター
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(800, now);
+
+        // 音量を 0.035 -> 0.11 にアップ
+        gain.gain.setValueAtTime(0.11, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+
+        osc.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.4);
+    }
+
+    playClearStep() {
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+
+        const freq = this.clearNotes[this.bgmStep % this.clearNotes.length];
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, now);
+
+        gain.gain.setValueAtTime(0.06, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.2);
+
+        // キック（4打）
+        if (this.bgmStep % 4 === 0) {
+            const kickOsc = this.ctx.createOscillator();
+            const kickGain = this.ctx.createGain();
+            kickOsc.type = 'sine';
+            kickOsc.frequency.setValueAtTime(120, now);
+            kickOsc.frequency.exponentialRampToValueAtTime(30, now + 0.08);
+
+            kickGain.gain.setValueAtTime(0.25, now);
+            kickGain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+
+            kickOsc.connect(kickGain);
+            kickGain.connect(this.ctx.destination);
+            kickOsc.start(now);
+            kickOsc.stop(now + 0.09);
+        }
+    }
+
+    playBossStep() {
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+
+        // 1. キックドラム（4つ打ちでズシッと鳴る重低音）
+        if (this.bgmStep % 4 === 0) {
+            const kickOsc = this.ctx.createOscillator();
+            const kickGain = this.ctx.createGain();
+            kickOsc.type = 'sine';
+            kickOsc.frequency.setValueAtTime(150, now);
+            kickOsc.frequency.exponentialRampToValueAtTime(30, now + 0.08);
+
+            kickGain.gain.setValueAtTime(0.35, now);
+            kickGain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+
+            kickOsc.connect(kickGain);
+            kickGain.connect(this.ctx.destination);
+            kickOsc.start(now);
+            kickOsc.stop(now + 0.08);
+        }
+
+        // 2. スネア / クラップ
+        if (this.bgmStep % 8 === 4) {
+            const snareOsc = this.ctx.createOscillator();
+            const snareGain = this.ctx.createGain();
+            snareOsc.type = 'triangle';
+            snareOsc.frequency.setValueAtTime(220, now);
+            snareOsc.frequency.exponentialRampToValueAtTime(80, now + 0.1);
+
+            snareGain.gain.setValueAtTime(0.2, now);
+            snareGain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+
+            snareOsc.connect(snareGain);
+            snareGain.connect(this.ctx.destination);
+            snareOsc.start(now);
+            snareOsc.stop(now + 0.1);
+        }
+
+        // 3. 重厚なドライブ・ベースライン
+        const bassFreq = this.bassNotes[Math.floor(this.bgmStep / 2) % this.bassNotes.length];
+        const bassOsc = this.ctx.createOscillator();
+        const bassGain = this.ctx.createGain();
+        bassOsc.type = 'sawtooth';
+        bassOsc.frequency.setValueAtTime(bassFreq, now);
+
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(1200, now);
+        filter.frequency.exponentialRampToValueAtTime(300, now + 0.08);
+
+        bassGain.gain.setValueAtTime(0.12, now);
+        bassGain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+
+        bassOsc.connect(filter);
+        filter.connect(bassGain);
+        bassGain.connect(this.ctx.destination);
+        bassOsc.start(now);
+        bassOsc.stop(now + 0.09);
+
+        // 4. スリリングな高速メロディ＆アルペジオ
+        const leadFreq = this.leadNotes[this.bgmStep % this.leadNotes.length];
+        const leadOsc = this.ctx.createOscillator();
+        const leadGain = this.ctx.createGain();
+        leadOsc.type = 'square';
+        leadOsc.frequency.setValueAtTime(leadFreq, now);
+
+        leadGain.gain.setValueAtTime(0.05, now);
+        leadGain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+
+        leadOsc.connect(leadGain);
+        leadGain.connect(this.ctx.destination);
+        leadOsc.start(now);
+        leadOsc.stop(now + 0.08);
+
+        // 5. ハイハット
+        if (this.bgmStep % 2 === 1) {
+            const hatOsc = this.ctx.createOscillator();
+            const hatGain = this.ctx.createGain();
+            hatOsc.type = 'square';
+            hatOsc.frequency.setValueAtTime(6000 + Math.random() * 3000, now);
+
+            hatGain.gain.setValueAtTime(0.025, now);
+            hatGain.gain.exponentialRampToValueAtTime(0.001, now + 0.03);
+
+            hatOsc.connect(hatGain);
+            hatGain.connect(this.ctx.destination);
+            hatOsc.start(now);
+            hatOsc.stop(now + 0.03);
+        }
+    }
+
+    playShoot() {
+        if (!this.ctx || !this.initialized) return;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(800, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(200, this.ctx.currentTime + 0.05);
+        gain.gain.setValueAtTime(0.08, this.ctx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.05);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.05);
+    }
+
+    playGraze() {
+        if (!this.ctx || !this.initialized) return;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(1200, this.ctx.currentTime);
+        osc.frequency.linearRampToValueAtTime(1600, this.ctx.currentTime + 0.04);
+        gain.gain.setValueAtTime(0.12, this.ctx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.04);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.04);
+    }
+
+    playExplosion() {
+        if (!this.ctx || !this.initialized) return;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(120, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(20, this.ctx.currentTime + 0.3);
+        gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.3);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.3);
+    }
+
+    playBomb() {
+        if (!this.ctx || !this.initialized) return;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(150, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(600, this.ctx.currentTime + 0.5);
+        gain.gain.setValueAtTime(0.4, this.ctx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.5);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.5);
+    }
+
+    playBitUnlock() {
+        if (!this.ctx || !this.initialized) return;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(523.25, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(1046.50, this.ctx.currentTime + 0.25);
+        gain.gain.setValueAtTime(0.25, this.ctx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.25);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.25);
+    }
+
+    play1UP() {
+        if (!this.ctx || !this.initialized) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(523.25, now);
+        osc.frequency.setValueAtTime(659.25, now + 0.08);
+        osc.frequency.setValueAtTime(783.99, now + 0.16);
+        osc.frequency.setValueAtTime(1046.50, now + 0.24);
+        gain.gain.setValueAtTime(0.3, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.4);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(now + 0.4);
+    }
+}
+
+const GAME_WIDTH = 480;
+const GAME_HEIGHT = 640;
+const PHASE_TIME_LIMIT = 45;
+
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+function resizeCanvas() {
+    const container = document.getElementById('gameContainer');
+    const maxW = container ? container.clientWidth : window.innerWidth;
+    const maxH = container ? container.clientHeight : window.innerHeight;
+    
+    let scale = Math.min(maxW / GAME_WIDTH, maxH / GAME_HEIGHT);
+    if (!scale || scale <= 0) scale = 1;
+    
+    canvas.width = GAME_WIDTH;
+    canvas.height = GAME_HEIGHT;
+    canvas.style.width = `${Math.floor(GAME_WIDTH * scale)}px`;
+    canvas.style.height = `${Math.floor(GAME_HEIGHT * scale)}px`;
+}
+window.addEventListener('resize', resizeCanvas);
+window.addEventListener('orientationchange', resizeCanvas);
+
+let gameState = 'TITLE';
+let score = 0;
+let graze = 0;
+let highScore = 0;
+
+try {
+    highScore = parseInt(localStorage.getItem('danmaku_highscore') || '0');
+} catch(e) {
+    highScore = 0;
+}
+
+// 移動入力状態の厳格な管理
+let keys = {};
+let activeTouchId = null;
+let lastTouchX = null;
+let lastTouchY = null;
+let touchSlowActive = false;
+let unlockedBitsCount = 0;
+
+let nextExtendScore = 10000;
+const FIRST_EXTEND_SCORE = 10000;
+const REPEAT_EXTEND_SCORE = 30000;
+let oneUpTextTimer = 0;
+
+let bombEffectTimer = 0;
+let screenShakeTimer = 0;
+
+document.getElementById('titleHighScore').textContent = highScore;
+
+// 入力状態を完全にリセットする安全関数
+function clearAllInputs() {
+    keys = {};
+    activeTouchId = null;
+    lastTouchX = null;
+    lastTouchY = null;
+    touchSlowActive = false;
+}
+
+class Player {
+    constructor() {
+        this.x = GAME_WIDTH / 2;
+        this.y = GAME_HEIGHT - 100;
+        this.speed = 5.5;
+        this.focusSpeed = 2.5;
+        this.hitRadius = 3;
+        this.grazeRadius = 24;
+        this.drawRadius = 12;
+        this.lives = 3;
+        this.bombs = 3;
+        this.invulnerableTimer = 0;
+        this.isFocus = false;
+        this.shootTimer = 0;
+    }
+
+    reset() {
+        this.x = GAME_WIDTH / 2;
+        this.y = GAME_HEIGHT - 100;
+        this.lives = 3;
+        this.bombs = 3;
+        this.invulnerableTimer = 120;
+        this.isFocus = false;
+        this.shootTimer = 0;
+    }
+
+    update() {
+        if (this.invulnerableTimer > 0) this.invulnerableTimer--;
+
+        this.isFocus = keys['Shift'] || touchSlowActive;
+        const currentSpeed = this.isFocus ? this.focusSpeed : this.speed;
+
+        let dx = 0;
+        let dy = 0;
+        if (keys['ArrowLeft'] || keys['a'] || keys['A']) dx -= 1;
+        if (keys['ArrowRight'] || keys['d'] || keys['D']) dx += 1;
+        if (keys['ArrowUp'] || keys['w'] || keys['W']) dy -= 1;
+        if (keys['ArrowDown'] || keys['s'] || keys['S']) dy += 1;
+
+        if (dx !== 0 && dy !== 0) {
+            dx *= 0.7071;
+            dy *= 0.7071;
+        }
+
+        this.x += dx * currentSpeed;
+        this.y += dy * currentSpeed;
+
+        this.x = Math.max(12, Math.min(GAME_WIDTH - 12, this.x));
+        this.y = Math.max(12, Math.min(GAME_HEIGHT - 12, this.y));
+
+        this.shootTimer++;
+        if (this.shootTimer % 4 === 0) {
+            this.shoot();
+        }
+    }
+
+    shoot() {
+        sound.playShoot();
+        playerBullets.push(new PlayerBullet(this.x - 12, this.y - 10, -1.5, -12));
+        playerBullets.push(new PlayerBullet(this.x - 4, this.y - 10, -0.5, -12));
+        playerBullets.push(new PlayerBullet(this.x + 4, this.y - 10, 0.5, -12));
+        playerBullets.push(new PlayerBullet(this.x + 12, this.y - 10, 1.5, -12));
+
+        if (unlockedBitsCount >= 1) {
+            playerBullets.push(new HomingBullet(this.x - 30, this.y + 10));
+        }
+        if (unlockedBitsCount >= 2) {
+            playerBullets.push(new HomingBullet(this.x + 30, this.y + 10));
+        }
+    }
+
+    draw() {
+        if (this.invulnerableTimer % 6 >= 3) return;
+
+        if (unlockedBitsCount >= 1) this.drawBit(this.x - 30, this.y + 10);
+        if (unlockedBitsCount >= 2) this.drawBit(this.x + 30, this.y + 10);
+
+        ctx.save();
+        ctx.translate(this.x, this.y);
+
+        ctx.fillStyle = '#00f0ff';
+        ctx.beginPath();
+        ctx.moveTo(0, -14);
+        ctx.lineTo(10, 10);
+        ctx.lineTo(0, 5);
+        ctx.lineTo(-10, 10);
+        ctx.closePath();
+        ctx.fill();
+
+        if (this.isFocus) {
+            ctx.strokeStyle = 'rgba(0, 240, 255, 0.6)';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.arc(0, 0, this.grazeRadius, 0, Math.PI * 2);
+            ctx.stroke();
+
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(0, 0, this.hitRadius + 1, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#ff0055';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        }
+
+        ctx.restore();
+    }
+
+    drawBit(bx, by) {
+        ctx.save();
+        ctx.translate(bx, by);
+        ctx.fillStyle = '#00f0ff';
+        ctx.beginPath();
+        ctx.arc(0, 0, 6, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        ctx.restore();
+    }
+}
+
+class PlayerBullet {
+    constructor(x, y, vx, vy) {
+        this.x = x;
+        this.y = y;
+        this.vx = vx;
+        this.vy = vy;
+        this.radius = 3;
+    }
+
+    update() {
+        this.x += this.vx;
+        this.y += this.vy;
+    }
+
+    draw() {
+        ctx.fillStyle = '#00ffff';
+        ctx.fillRect(this.x - 2, this.y - 6, 4, 12);
+    }
+}
+
+class HomingBullet {
+    constructor(x, y) {
+        this.x = x;
+        this.y = y;
+        this.speed = 10;
+        this.radius = 4;
+        this.angle = -Math.PI / 2;
+    }
+
+    update() {
+        if (boss && boss.active) {
+            const targetAngle = Math.atan2(boss.y - this.y, boss.x - this.x);
+            let diff = targetAngle - this.angle;
+            while (diff < -Math.PI) diff += Math.PI * 2;
+            while (diff > Math.PI) diff -= Math.PI * 2;
+            this.angle += diff * 0.15;
+        }
+
+        this.x += Math.cos(this.angle) * this.speed;
+        this.y += Math.sin(this.angle) * this.speed;
+    }
+
+    draw() {
+        ctx.fillStyle = '#ff00ea';
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.fill();
+    }
+}
+
+class Boss {
+    constructor() {
+        this.x = GAME_WIDTH / 2;
+        this.y = -80;
+        this.targetY = 120;
+        this.radius = 28;
+        this.phase = 1;
+        this.maxHealths = [10000, 15000, 20000];
+        this.health = this.maxHealths[0];
+        this.active = false;
+        this.timer = 0;
+        this.spellName = "Phase 1: Starlight Blossom Wave";
+        this.phaseTimer = PHASE_TIME_LIMIT;
+    }
+
+    spawn() {
+        this.x = GAME_WIDTH / 2;
+        this.y = -80;
+        this.phase = 1;
+        this.health = this.maxHealths[0];
+        this.active = true;
+        this.timer = 0;
+        this.spellName = "Phase 1: Starlight Blossom Wave";
+        this.phaseTimer = PHASE_TIME_LIMIT;
+    }
+
+    update() {
+        if (!this.active) return;
+
+        if (this.y < this.targetY) {
+            this.y += 2;
+            return;
+        }
+
+        this.timer++;
+
+        if (this.timer % 60 === 0 && this.phaseTimer > 0) {
+            this.phaseTimer--;
+            if (this.phaseTimer <= 0) {
+                this.nextPhase();
+                return;
+            }
+        }
+
+        this.x = GAME_WIDTH / 2 + Math.sin(this.timer * 0.02) * 60;
+
+        if (this.phase === 1) {
+            if (this.timer % 16 === 0) {
+                const count = 12;
+                for (let i = 0; i < count; i++) {
+                    const angle = (Math.PI * 2 / count) * i + (this.timer * 0.03);
+                    enemyBullets.push(new EnemyBullet(this.x, this.y, Math.cos(angle) * 2.2, Math.sin(angle) * 2.2, '#00f0ff', 4));
+                }
+            }
+        } else if (this.phase === 2) {
+            if (this.timer % 20 === 0) {
+                const baseAngle = Math.atan2(player.y - this.y, player.x - this.x);
+                const speed = 3.2;
+                enemyBullets.push(new EnemyBullet(this.x, this.y, Math.cos(baseAngle) * speed, Math.sin(baseAngle) * speed, '#ff00aa', 4.5));
+                
+                const offAngle1 = baseAngle - 0.25;
+                const offAngle2 = baseAngle + 0.25;
+                const offAngle3 = baseAngle - 0.5;
+                const offAngle4 = baseAngle + 0.5;
+                enemyBullets.push(new EnemyBullet(this.x, this.y, Math.cos(offAngle1) * speed, Math.sin(offAngle1) * speed, '#a855f7', 4));
+                enemyBullets.push(new EnemyBullet(this.x, this.y, Math.cos(offAngle2) * speed, Math.sin(offAngle2) * speed, '#a855f7', 4));
+                enemyBullets.push(new EnemyBullet(this.x, this.y, Math.cos(offAngle3) * speed, Math.sin(offAngle3) * speed, '#00ff88', 3.5));
+                enemyBullets.push(new EnemyBullet(this.x, this.y, Math.cos(offAngle4) * speed, Math.sin(offAngle4) * speed, '#00ff88', 3.5));
+            }
+            if (this.timer % 40 === 0) {
+                const baseAngle = Math.atan2(player.y - this.y, player.x - this.x) + Math.PI / 12;
+                const count = 8;
+                for (let i = 0; i < count; i++) {
+                    const angle = baseAngle + (Math.PI * 2 / count) * i;
+                    enemyBullets.push(new EnemyBullet(this.x, this.y, Math.cos(angle) * 2.2, Math.sin(angle) * 2.2, '#00ffcc', 3.5));
+                }
+            }
+        } else if (this.phase === 3) {
+            if (this.timer % 14 === 0) {
+                const count = 12;
+                for (let i = 0; i < count; i++) {
+                    const angle = (Math.PI * 2 / count) * i + Math.sin(this.timer * 0.08);
+                    const speed = 2.6 + Math.sin(i + this.timer) * 0.4;
+                    enemyBullets.push(new EnemyBullet(this.x, this.y, Math.cos(angle) * speed, Math.sin(angle) * speed, '#00ff88', 4));
+                }
+            }
+
+            if (this.timer % 24 === 0) {
+                const baseAngle = Math.atan2(player.y - this.y, player.x - this.x);
+                const speed = 4.2;
+                enemyBullets.push(new EnemyBullet(this.x, this.y, Math.cos(baseAngle) * speed, Math.sin(baseAngle) * speed, '#ff0055', 5));
+                const offAngle1 = baseAngle - 0.22;
+                const offAngle2 = baseAngle + 0.22;
+                enemyBullets.push(new EnemyBullet(this.x, this.y, Math.cos(offAngle1) * speed, Math.sin(offAngle1) * speed, '#00f0ff', 4.5));
+                enemyBullets.push(new EnemyBullet(this.x, this.y, Math.cos(offAngle2) * speed, Math.sin(offAngle2) * speed, '#00f0ff', 4.5));
+            }
+
+            if (this.timer % 8 === 0) {
+                const randAngle = Math.random() * Math.PI * 2;
+                const randSpeed = 1.2 + Math.random() * 1.5;
+                enemyBullets.push(new EnemyBullet(this.x, this.y, Math.cos(randAngle) * randSpeed, Math.sin(randAngle) * randSpeed, '#a855f7', 3.5));
+            }
+        }
+    }
+
+    takeDamage(amount) {
+        if (!this.active || this.y < this.targetY) return;
+        this.health -= amount;
+        if (this.health <= 0) {
+            this.nextPhase();
+        }
+    }
+
+    nextPhase() {
+        enemyBullets = [];
+        this.phase++;
+        if (this.phase > 3) {
+            this.active = false;
+            gameClear();
+        } else {
+            this.health = this.maxHealths[this.phase - 1];
+            this.phaseTimer = PHASE_TIME_LIMIT;
+            this.timer = 0;
+            if (this.phase === 2) this.spellName = "Phase 2: Prism Spiral Barrage";
+            if (this.phase === 3) this.spellName = "Final Phase: Neon Cosmos Breakdown";
+        }
+    }
+
+    draw() {
+        if (!this.active) return;
+
+        ctx.save();
+        ctx.translate(this.x, this.y);
+
+        ctx.fillStyle = '#ff0055';
+        ctx.beginPath();
+        ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+
+        ctx.restore();
+    }
+}
+
+class EnemyBullet {
+    constructor(x, y, vx, vy, color, radius) {
+        this.x = x;
+        this.y = y;
+        this.vx = vx;
+        this.vy = vy;
+        this.color = color;
+        this.radius = radius;
+        this.grazed = false;
+    }
+
+    update() {
+        this.x += this.vx;
+        this.y += this.vy;
+    }
+
+    draw() {
+        ctx.fillStyle = this.color;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.fill();
+    }
+}
+
+class Particle {
+    constructor(x, y, color) {
+        this.x = x;
+        this.y = y;
+        this.vx = (Math.random() - 0.5) * 6;
+        this.vy = (Math.random() - 0.5) * 6;
+        this.color = color;
+        this.life = 1.0;
+        this.decay = Math.random() * 0.03 + 0.02;
+    }
+
+    update() {
+        this.x += this.vx;
+        this.y += this.vy;
+        this.life -= this.decay;
+    }
+
+    draw() {
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, this.life);
+        ctx.fillStyle = this.color;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, 3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    }
+}
+
+class BombParticle {
+    constructor(x, y) {
+        this.x = x;
+        this.y = y;
+        const angle = Math.random() * Math.PI * 2;
+        const speed = Math.random() * 8 + 2;
+        this.vx = Math.cos(angle) * speed;
+        this.vy = Math.sin(angle) * speed;
+        this.radius = Math.random() * 6 + 3;
+        this.color = Math.random() > 0.5 ? '#ff007f' : '#00ffff';
+        this.life = 1.0;
+        this.decay = Math.random() * 0.025 + 0.015;
+    }
+
+    update() {
+        this.x += this.vx;
+        this.y += this.vy;
+        this.vx *= 0.96;
+        this.vy *= 0.96;
+        this.life -= this.decay;
+    }
+
+    draw() {
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, this.life);
+        ctx.fillStyle = this.color;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    }
+}
+
+let player = new Player();
+let boss = new Boss();
+let playerBullets = [];
+let enemyBullets = [];
+let particles = [];
+let bombParticles = [];
+let sound = new SoundEffects();
+let currentButtonLayout = 'RIGHT';
+
+function applyButtonLayout() {
+    const container = document.getElementById('touchBtnContainer');
+    const toggleBtn = document.getElementById('layoutToggleBtn');
+    if (!container || !toggleBtn) return;
+
+    if (currentButtonLayout === 'LEFT') {
+        container.style.justifyContent = 'flex-start';
+        toggleBtn.textContent = 'LEFT SIDE (左配置)';
+    } else {
+        container.style.justifyContent = 'flex-end';
+        toggleBtn.textContent = 'RIGHT SIDE (右配置)';
+    }
+}
+
+function addScore(amount) {
+    score += amount;
+    checkExtend();
+}
+
+function checkExtend() {
+    if (score >= nextExtendScore) {
+        player.lives++;
+        sound.play1UP();
+        oneUpTextTimer = 90;
+        
+        if (nextExtendScore === FIRST_EXTEND_SCORE) {
+            nextExtendScore = FIRST_EXTEND_SCORE + REPEAT_EXTEND_SCORE;
+        } else {
+            nextExtendScore += REPEAT_EXTEND_SCORE;
+        }
+    }
+}
+
+function update() {
+    if (gameState !== 'PLAYING') return;
+
+    if (oneUpTextTimer > 0) oneUpTextTimer--;
+    if (bombEffectTimer > 0) bombEffectTimer--;
+    if (screenShakeTimer > 0) screenShakeTimer--;
+
+    player.update();
+    boss.update();
+
+    for (let i = playerBullets.length - 1; i >= 0; i--) {
+        const bullet = playerBullets[i];
+        bullet.update();
+
+        if (bullet.y < -20 || bullet.x < -20 || bullet.x > GAME_WIDTH + 20) {
+            playerBullets.splice(i, 1);
+            continue;
+        }
+
+        if (boss.active && boss.y >= boss.targetY) {
+            const dx = bullet.x - boss.x;
+            const dy = bullet.y - boss.y;
+            if (Math.sqrt(dx * dx + dy * dy) < boss.radius + bullet.radius) {
+                boss.takeDamage(12);
+                addScore(10);
+                playerBullets.splice(i, 1);
+            }
+        }
+    }
+
+    for (let i = enemyBullets.length - 1; i >= 0; i--) {
+        const bullet = enemyBullets[i];
+        bullet.update();
+
+        if (bullet.x < -50 || bullet.x > GAME_WIDTH + 50 || bullet.y < -50 || bullet.y > GAME_HEIGHT + 50) {
+            enemyBullets.splice(i, 1);
+            continue;
+        }
+
+        const dx = bullet.x - player.x;
+        const dy = bullet.y - player.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        if (!bullet.grazed && dist < player.grazeRadius + bullet.radius) {
+            bullet.grazed = true;
+            graze++;
+            addScore(50);
+            sound.playGraze();
+
+            if (graze === 30 && unlockedBitsCount < 1) {
+                unlockedBitsCount = 1;
+                sound.playBitUnlock();
+            } else if (graze === 60 && unlockedBitsCount < 2) {
+                unlockedBitsCount = 2;
+                sound.playBitUnlock();
+            }
+        }
+
+        if (player.invulnerableTimer === 0 && dist < player.hitRadius + bullet.radius) {
+            playerHit();
+            break;
+        }
+    }
+
+    for (let i = particles.length - 1; i >= 0; i--) {
+        particles[i].update();
+        if (particles[i].life <= 0) particles.splice(i, 1);
+    }
+
+    for (let i = bombParticles.length - 1; i >= 0; i--) {
+        bombParticles[i].update();
+        if (bombParticles[i].life <= 0) bombParticles.splice(i, 1);
+    }
+}
+
+function playerHit() {
+    sound.playExplosion();
+    player.lives--;
+
+    for (let i = 0; i < 30; i++) {
+        particles.push(new Particle(player.x, player.y, '#ff0055'));
+    }
+
+    if (player.lives < 0) {
+        gameOver();
+    } else {
+        player.x = GAME_WIDTH / 2;
+        player.y = GAME_HEIGHT - 100;
+        player.invulnerableTimer = 120;
+        enemyBullets = [];
+
+        if (graze >= 60) {
+            unlockedBitsCount = 2;
+        } else if (graze >= 30) {
+            unlockedBitsCount = 1;
+        } else {
+            unlockedBitsCount = 0;
+        }
+    }
+}
+
+function triggerBomb() {
+    if (gameState !== 'PLAYING' || player.bombs <= 0) return;
+    player.bombs--;
+    sound.playBomb();
+
+    bombEffectTimer = 45;
+    screenShakeTimer = 25;
+
+    for (let i = 0; i < 80; i++) {
+        bombParticles.push(new BombParticle(player.x, player.y));
+    }
+
+    enemyBullets = [];
+    if (boss.active) {
+        boss.takeDamage(1200);
+    }
+}
+
+function togglePause() {
+    if (gameState === 'PLAYING') {
+        gameState = 'PAUSED';
+        sound.stopBGM();
+        clearAllInputs();
+        document.getElementById('pauseScreen').classList.remove('hidden');
+    } else if (gameState === 'PAUSED') {
+        gameState = 'PLAYING';
+        sound.startBGM();
+        clearAllInputs();
+        document.getElementById('pauseScreen').classList.add('hidden');
+    }
+}
+
+function returnToTitle() {
+    gameState = 'TITLE';
+    sound.playBGM('TITLE');
+    clearAllInputs();
+    enemyBullets = [];
+    playerBullets = [];
+    document.getElementById('pauseScreen').classList.add('hidden');
+    document.getElementById('gameOverScreen').classList.add('hidden');
+    document.getElementById('gameClearScreen').classList.add('hidden');
+    document.getElementById('touchControls').classList.add('hidden');
+    document.getElementById('titleScreen').classList.remove('hidden');
+    document.getElementById('titleHighScore').textContent = highScore;
+}
+
+function gameOver() {
+    gameState = 'GAMEOVER';
+    sound.playBGM('GAMEOVER');
+    clearAllInputs();
+    if (score > highScore) {
+        highScore = score;
+        try { localStorage.setItem('danmaku_highscore', highScore.toString()); } catch(e){}
+        document.getElementById('titleHighScore').textContent = highScore;
+    }
+    document.getElementById('finalScore').textContent = score;
+    document.getElementById('finalGraze').textContent = graze;
+    document.getElementById('finalHighScore').textContent = highScore;
+    document.getElementById('gameOverScreen').classList.remove('hidden');
+    document.getElementById('touchControls').classList.add('hidden');
+}
+
+function gameClear() {
+    gameState = 'CLEAR';
+    sound.playBGM('CLEAR');
+    clearAllInputs();
+    if (score > highScore) {
+        highScore = score;
+        try { localStorage.setItem('danmaku_highscore', highScore.toString()); } catch(e){}
+        document.getElementById('titleHighScore').textContent = highScore;
+    }
+    const noMissBonus = player.lives === 3 ? 50000 : 0;
+    score += noMissBonus;
+
+    document.getElementById('clearScore').textContent = score;
+    document.getElementById('clearGraze').textContent = graze;
+    document.getElementById('clearNoMiss').textContent = noMissBonus;
+    document.getElementById('gameClearScreen').classList.remove('hidden');
+    document.getElementById('touchControls').classList.add('hidden');
+}
+
+function draw() {
+    ctx.fillStyle = '#050512';
+    ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+
+    ctx.save();
+
+    if (screenShakeTimer > 0) {
+        const shakeX = (Math.random() - 0.5) * 14;
+        const shakeY = (Math.random() - 0.5) * 14;
+        ctx.translate(shakeX, shakeY);
+    }
+
+    if (gameState === 'PLAYING' || gameState === 'PAUSED') {
+        player.draw();
+        boss.draw();
+
+        playerBullets.forEach(b => b.draw());
+        enemyBullets.forEach(b => b.draw());
+        particles.forEach(p => p.draw());
+        bombParticles.forEach(bp => bp.draw());
+
+        if (bombEffectTimer > 0) {
+            const maxRadius = Math.max(GAME_WIDTH, GAME_HEIGHT) * 1.2;
+            const progress = (45 - bombEffectTimer) / 45;
+            const currentRadius = progress * maxRadius;
+
+            ctx.save();
+            ctx.strokeStyle = `rgba(255, 0, 128, ${1 - progress})`;
+            ctx.lineWidth = 12 * (1 - progress) + 2;
+            ctx.beginPath();
+            ctx.arc(player.x, player.y, currentRadius, 0, Math.PI * 2);
+            ctx.stroke();
+
+            ctx.strokeStyle = `rgba(0, 240, 255, ${1 - progress})`;
+            ctx.lineWidth = 6 * (1 - progress);
+            ctx.beginPath();
+            ctx.arc(player.x, player.y, currentRadius * 0.7, 0, Math.PI * 2);
+            ctx.stroke();
+
+            if (bombEffectTimer > 35) {
+                ctx.fillStyle = `rgba(255, 0, 128, ${(bombEffectTimer - 35) / 10 * 0.35})`;
+                ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+            }
+            ctx.restore();
+        }
+
+        drawHUD();
+    }
+
+    ctx.restore();
+}
+
+function drawHUD() {
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 12px sans-serif';
+    ctx.fillText(`SCORE: ${score}`, 12, 24);
+    ctx.fillText(`GRAZE: ${graze}`, 12, 42);
+
+    ctx.fillStyle = '#ff0055';
+    let lifeStr = "LIFE: " + "♥".repeat(Math.max(0, player.lives));
+    ctx.fillText(lifeStr, GAME_WIDTH - 110, 24);
+
+    ctx.fillStyle = '#00f0ff';
+    let bombStr = "BOMB: " + "★".repeat(Math.max(0, player.bombs));
+    ctx.fillText(bombStr, GAME_WIDTH - 110, 42);
+
+    if (boss.active) {
+        const hpPercent = Math.max(0, boss.health / boss.maxHealths[boss.phase - 1]);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+        ctx.fillRect(12, 52, GAME_WIDTH - 24, 6);
+
+        ctx.fillStyle = '#ff0055';
+        ctx.fillRect(12, 52, (GAME_WIDTH - 24) * hpPercent, 6);
+
+        ctx.fillStyle = '#00f0ff';
+        ctx.font = '10px sans-serif';
+        ctx.fillText(boss.spellName, 12, 70);
+
+        ctx.fillStyle = boss.phaseTimer <= 10 ? '#ff0055' : '#ffffff';
+        ctx.fillText(`TIME ${boss.phaseTimer.toFixed(1)}`, GAME_WIDTH - 70, 70);
+    }
+
+    if (oneUpTextTimer > 0) {
+        ctx.save();
+        ctx.fillStyle = '#00ff88';
+        ctx.font = 'bold 22px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('1UP! +1 LIFE', GAME_WIDTH / 2, GAME_HEIGHT / 2 - 40);
+        ctx.restore();
+    }
+}
+
+function gameLoop() {
+    update();
+    draw();
+    requestAnimationFrame(gameLoop);
+}
+
+function startGame() {
+    sound.init();
+    sound.playBGM('BOSS');
+    clearAllInputs();
+    score = 0;
+    graze = 0;
+    unlockedBitsCount = 0;
+    nextExtendScore = FIRST_EXTEND_SCORE;
+    oneUpTextTimer = 0;
+    bombEffectTimer = 0;
+    screenShakeTimer = 0;
+    bombParticles = [];
+    enemyBullets = [];
+    playerBullets = [];
+    player.reset();
+    boss.spawn();
+
+    applyButtonLayout();
+
+    gameState = 'PLAYING';
+    document.getElementById('titleScreen').classList.add('hidden');
+    document.getElementById('gameOverScreen').classList.add('hidden');
+    document.getElementById('gameClearScreen').classList.add('hidden');
+    document.getElementById('pauseScreen').classList.add('hidden');
+    document.getElementById('touchControls').classList.remove('hidden');
+
+    setTimeout(resizeCanvas, 50);
+}
+
+// ユーザーアクション（画面タップやクリック）があった際にタイトル画面BGMを再生開始
+document.body.addEventListener('pointerdown', () => {
+    sound.init();
+    if (gameState === 'TITLE' && !sound.bgmPlaying) {
+        sound.playBGM('TITLE');
+    }
+}, { once: false });
+
+// キー入力イベント
+window.addEventListener('keydown', e => {
+    keys[e.key] = true;
+    if (e.key === 'x' || e.key === 'X') triggerBomb();
+    if (e.key === 'p' || e.key === 'P' || e.key === 'Escape') togglePause();
+});
+
+window.addEventListener('keyup', e => {
+    keys[e.key] = false;
+});
+
+// フォーカスが離れた際（ウィンドウ切り替え・タブ切替など）のキー固定バグを完全にシャットアウト
+window.addEventListener('blur', () => {
+    clearAllInputs();
+});
+
+// タッチ操作の厳格な制御
+const gameContainer = document.getElementById('gameContainer');
+
+gameContainer.addEventListener('touchstart', e => {
+    if (gameState !== 'PLAYING') return;
+    sound.init();
+    
+    // 最初の有効なタッチ（ボタン以外のドラッグ用）のみを取得
+    if (activeTouchId === null && e.changedTouches.length > 0) {
+        const touch = e.changedTouches[0];
+        activeTouchId = touch.identifier;
+        lastTouchX = touch.clientX;
+        lastTouchY = touch.clientY;
+    }
+}, { passive: false });
+
+gameContainer.addEventListener('touchmove', e => {
+    if (gameState !== 'PLAYING') return;
+    
+    for (let i = 0; i < e.changedTouches.length; i++) {
+        const touch = e.changedTouches[i];
+        if (touch.identifier === activeTouchId) {
+            e.preventDefault();
+            if (lastTouchX !== null && lastTouchY !== null) {
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = GAME_WIDTH / rect.width;
+                const scaleY = GAME_HEIGHT / rect.height;
+
+                const dx = (touch.clientX - lastTouchX) * scaleX;
+                const dy = (touch.clientY - lastTouchY) * scaleY;
+
+                player.x += dx;
+                player.y += dy;
+
+                player.x = Math.max(12, Math.min(GAME_WIDTH - 12, player.x));
+                player.y = Math.max(12, Math.min(GAME_HEIGHT - 12, player.y));
+            }
+            lastTouchX = touch.clientX;
+            lastTouchY = touch.clientY;
+            break;
+        }
+    }
+}, { passive: false });
+
+function handleTouchEnd(e) {
+    if (activeTouchId !== null) {
+        for (let i = 0; i < e.changedTouches.length; i++) {
+            if (e.changedTouches[i].identifier === activeTouchId) {
+                activeTouchId = null;
+                lastTouchX = null;
+                lastTouchY = null;
+                break;
+            }
+        }
+    }
+}
+
+gameContainer.addEventListener('touchend', handleTouchEnd);
+gameContainer.addEventListener('touchcancel', handleTouchEnd);
+
+const touchFocusBtn = document.getElementById('touchFocusBtn');
+if (touchFocusBtn) {
+    touchFocusBtn.addEventListener('touchstart', (e) => { e.preventDefault(); touchSlowActive = true; });
+    touchFocusBtn.addEventListener('touchend', (e) => { e.preventDefault(); touchSlowActive = false; });
+    touchFocusBtn.addEventListener('touchcancel', (e) => { e.preventDefault(); touchSlowActive = false; });
+}
+
+const touchBombBtn = document.getElementById('touchBombBtn');
+if (touchBombBtn) {
+    touchBombBtn.addEventListener('touchstart', (e) => { e.preventDefault(); triggerBomb(); });
+}
+
+const touchPauseBtn = document.getElementById('touchPauseBtn');
+if (touchPauseBtn) {
+    touchPauseBtn.addEventListener('touchstart', (e) => { e.preventDefault(); togglePause(); });
+    touchPauseBtn.addEventListener('click', () => togglePause());
+}
+
+document.getElementById('startBtn').addEventListener('click', startGame);
+document.getElementById('retryBtn').addEventListener('click', startGame);
+document.getElementById('gameOverTitleBtn').addEventListener('click', returnToTitle);
+document.getElementById('clearRetryBtn').addEventListener('click', startGame);
+document.getElementById('clearTitleBtn').addEventListener('click', returnToTitle);
+document.getElementById('resumeBtn').addEventListener('click', togglePause);
+document.getElementById('restartPauseBtn').addEventListener('click', startGame);
+document.getElementById('returnTitleBtn').addEventListener('click', returnToTitle);
+
+document.getElementById('layoutToggleBtn').addEventListener('click', () => {
+    currentButtonLayout = (currentButtonLayout === 'RIGHT') ? 'LEFT' : 'RIGHT';
+    applyButtonLayout();
+});
+
+window.onload = function() {
+    resizeCanvas();
+    setTimeout(resizeCanvas, 100);
+    gameLoop();
+};
+</script>
+</body>
+</html>
