@@ -129,8 +129,8 @@ PC：キーボードの ←（左矢印）キーと →（右矢印）キーを�
     name: "テトリス",
     file: "/games/20/code_artifact.html",
     image: "/games/20/20.png",
-    creator: "前野　",
-    description: "",
+    creator: "前野　優人",
+    description: "テトリスです。",
     controls: `スマホ・タブレット（画面のボタン）
 ◀ / ▶：ブロックを左右に動かします。
 ▼：ブロックを少し早く落とします。
@@ -258,71 +258,6 @@ HOLD：いまのブロックを保存し、あとで使えます。
     description: "",
     controls: "",
   },
-  {
-    name: "",
-    file: "/games/12/code_artifact.html",
-    image: "/games/12/12.png",
-    creator: "",
-    description: "",
-    controls: "",
-  },
-  {
-    name: "",
-    file: "/games/13/code_artifact.html",
-    image: "/games/13/13.png",
-    creator: "",
-    description: "",
-    controls: "",
-  },
-  {
-    name: "",
-    file: "/games/14/code_artifact.html",
-    image: "/games/14/14.png",
-    creator: "",
-    description: "",
-    controls: "",
-  },
-  {
-    name: "",
-    file: "/games/15/code_artifact.html",
-    image: "/games/15/15.png",
-    creator: "",
-    description: "",
-    controls: "",
-  },
-  {
-    name: "",
-    file: "/games/16/code_artifact.html",
-    image: "/games/16/16.png",
-    creator: "",
-    description: "",
-    controls: "",
-  },
-  {
-    name: "",
-    file: "/games/17/code_artifact.html",
-    image: "/games/17/17.png",
-    creator: "",
-    description: "",
-    controls: "",
-  },
-  {
-    name: "",
-    file: "/games/18/code_artifact.html",
-    image: "/games/18/18.png",
-    creator: "",
-    description: "",
-    controls: "",
-  },
-  {
-    name: "",
-    file: "/games/19/code_artifact.html",
-    image: "/games/19/19.png",
-    creator: "",
-    description: "",
-    controls: "",
-  },
-];
 
 function App() {
   const [selected, setSelected] = useState<Game | null>(null);
