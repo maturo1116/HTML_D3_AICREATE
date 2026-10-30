@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useLayoutEffect } from "react";
 import "./App.css";
 
 type Game = {
@@ -263,6 +263,11 @@ HOLD：いまのブロックを保存し、あとで使えます。
 
 function App() {
   const [selected, setSelected] = useState<Game | null>(null);
+
+  // ゲーム切り替え時にページのスクロール位置を先頭へ戻す
+  useLayoutEffect(() => {
+    window.scrollTo(0, 0);
+  }, [selected]);
 
   const registeredGames = games.filter(
     (game) => game.name.trim() !== ""

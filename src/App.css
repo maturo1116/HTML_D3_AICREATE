@@ -6,6 +6,7 @@
 html {
   min-height: 100%;
   background: #ffffff;
+  scroll-behavior: auto;
 }
 
 body {
@@ -86,7 +87,7 @@ main {
   outline-offset: 3px;
 }
 
-/* サムネイル：全カードで同じ比率 */
+/* サムネイル */
 .game-thumbnail {
   display: block;
   flex-shrink: 0;
@@ -96,7 +97,7 @@ main {
   background: #f0f0f0;
 }
 
-/* ゲーム情報欄：高さを統一 */
+/* ゲーム情報欄 */
 .game-info {
   display: flex;
   flex: 0 0 180px;
@@ -150,10 +151,27 @@ main {
   font-weight: 700;
 }
 
-/* ゲーム詳細画面 */
+/* =================================
+   ゲーム詳細画面
+================================= */
+
 .game-detail {
   width: 100%;
   color: #222222;
+}
+
+/* ゲーム画面と説明欄を横並び */
+.game-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
+  gap: 24px;
+  align-items: start;
+  width: 100%;
+}
+
+/* 左側：ゲーム本体 */
+.game-main {
+  min-width: 0;
 }
 
 /* 詳細画面の操作バー */
@@ -205,26 +223,29 @@ main {
   background: #ffffff;
 }
 
-/* ゲーム説明欄 */
-.details {
-  margin-top: 20px;
+/* 右側：ゲーム説明欄 */
+.game-layout .details {
+  min-width: 0;
+  margin: 0;
   padding: 20px;
   border: 1px solid #dddddd;
   border-radius: 12px;
   background: #ffffff;
   color: #222222;
+  overflow-wrap: anywhere;
 }
 
+.details h1,
 .details h2,
 .details h3,
 .details strong {
   color: #222222;
 }
 
-.details p {
-  color: #555555;
-  white-space: pre-line;
-  overflow-wrap: anywhere;
+.details h1 {
+  margin-top: 0;
+  font-size: 26px;
+  line-height: 1.4;
 }
 
 .details h2 {
@@ -237,15 +258,24 @@ main {
   font-size: 18px;
 }
 
-/* 操作説明の改行を維持 */
-.controls,
-.game-controls {
-  color: #444444;
+.details p {
+  color: #555555;
   white-space: pre-line;
   overflow-wrap: anywhere;
 }
 
-/* タブレット */
+/* 操作説明の改行を維持 */
+.controls,
+.game-controls {
+  color: #444444;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* =================================
+   タブレット
+================================= */
+
 @media (max-width: 900px) {
   main {
     padding: 20px;
@@ -265,9 +295,25 @@ main {
   .game-info p {
     font-size: 13px;
   }
+
+  .game-layout {
+    grid-template-columns: minmax(0, 1.6fr) minmax(240px, 1fr);
+    gap: 16px;
+  }
+
+  .game-frame {
+    min-height: 350px;
+  }
+
+  .game-layout .details {
+    padding: 16px;
+  }
 }
 
-/* スマートフォン：3列を維持 */
+/* =================================
+   スマートフォン
+================================= */
+
 @media (max-width: 600px) {
   main {
     padding: 10px;
@@ -278,6 +324,7 @@ main {
     font-size: 22px;
   }
 
+  /* ゲーム一覧は3列を維持 */
   .games {
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 8px;
@@ -313,6 +360,12 @@ main {
     font-size: 11px;
   }
 
+  /* ゲーム画面と説明欄を縦並び */
+  .game-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+  }
+
   .game-toolbar {
     gap: 8px;
   }
@@ -327,12 +380,24 @@ main {
     min-height: 300px;
   }
 
-  .details {
+  .game-layout .details {
+    margin: 0;
     padding: 14px;
+  }
+
+  .details h1 {
+    font-size: 22px;
+  }
+
+  .details h3 {
+    font-size: 17px;
   }
 }
 
-/* 動きを減らす設定 */
+/* =================================
+   動きを減らす設定
+================================= */
+
 @media (prefers-reduced-motion: reduce) {
   .game {
     transition: none;
@@ -342,54 +407,3 @@ main {
     transform: none;
   }
 }
-
-.game-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
-  gap: 24px;
-  align-items: start;
-  width: 100%;
-}
-
-.game-main {
-  min-width: 0;
-}
-
-.game-layout .game-frame {
-  display: block;
-  width: 100%;
-  height: 70vh;
-  min-height: 450px;
-  border: none;
-  background: #000;
-}
-
-.game-layout .game-toolbar {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  margin-top: 12px;
-}
-
-.game-layout .details {
-  min-width: 0;
-  margin: 0;
-  padding: 20px;
-  overflow-wrap: anywhere;
-}
-
-.game-layout .controls {
-  white-space: pre-wrap;
-}
-
-@media (max-width: 768px) {
-  .game-layout {
-    grid-template-columns: 1fr;
-  }
-
-  .game-layout .game-frame {
-    height: 60vh;
-    min-height: 350px;
-  }
-}
-
