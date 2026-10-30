@@ -1,5 +1,5 @@
 
-import { useState, useLayoutEffect } from "react";
+import { useState, useLayoutEffect, useRef } from "react";
 import "./App.css";
 
 type Game = {
@@ -236,60 +236,97 @@ HOLD：いまのブロックを保存し、あとで使えます。
 タイトルに戻る（右上ボタン）: ゲームが一時停止されます。「はい」を選ぶとタイトル画面に戻り、「いいえ」を選ぶとゲームを再開できます。`,
   },
   {
-    name: "",
-    file: "/games/9/code_artifact.html",
-    image: "/games/9/9.png",
-    creator: "",
-    description: "",
-    controls: "",
-  },
-  {
-    name: "",
-    file: "/games/10/code_artifact.html",
-    image: "/games/10/10.png",
-    creator: "",
-    description: "",
-    controls: "",
-  },
-  {
-    name: "",
-    file: "/games/11/code_artifact.html",
-    image: "/games/11/11.png",
-    creator: "",
-    description: "",
-    controls: "",
+    name: "インベーダーV",
+    file: "/games/23/code_artifact.html",
+    image: "/games/23/23.png",
+    creator: "村上　悠和",
+    description: "ごく普通の2Dアクションゲームです",
+    controls: `移動・ジャンプ：画面上に表示される「←」「→」「JUMP」のタッチボタンを使用します。
+即時リトライ：画面右上にある「RETRY」ボタンをタップします。`,
   },
 ];
 
 function App() {
   const [selected, setSelected] = useState<Game | null>(null);
+  const [pseudoFullscreen, setPseudoFullscreen] = useState(false);
+  const gameMainRef = useRef<HTMLElement>(null);
 
   // ゲーム切り替え時にページのスクロール位置を先頭へ戻す
   useLayoutEffect(() => {
     window.scrollTo(0, 0);
   }, [selected]);
 
+  // ゲームを切り替えたときに疑似全画面を解除
+  useLayoutEffect(() => {
+    setPseudoFullscreen(false);
+  }, [selected]);
+
+  // ブラウザ標準の全画面が終了した場合の状態同期
+  useLayoutEffect(() => {
+    const handleFullscreenChange = () => {
+      if (!document.fullscreenElement) {
+        setPseudoFullscreen(false);
+      }
+    };
+
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+
+    return () => {
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+    };
+  }, []);
+
   const registeredGames = games.filter(
     (game) => game.name.trim() !== ""
   );
 
   async function enterFullscreen() {
-    const frame = document.querySelector(".game-frame");
+    const frame = gameMainRef.current?.querySelector<HTMLIFrameElement>(
+      ".game-frame"
+    );
 
-    if (!(frame instanceof HTMLIFrameElement)) return;
+    if (!frame) return;
 
-    try {
-      await frame.requestFullscreen();
-    } catch (error) {
-      console.error("全画面表示に失敗しました", error);
+    // 疑似全画面中なら解除
+    if (pseudoFullscreen) {
+      setPseudoFullscreen(false);
+      return;
     }
+
+    // すでに全画面中なら解除
+    if (document.fullscreenElement) {
+      try {
+        await document.exitFullscreen();
+      } catch (error) {
+        console.error("全画面解除に失敗しました", error);
+      }
+      return;
+    }
+
+    // まずブラウザ標準の全画面表示を試す
+    try {
+      if (frame.requestFullscreen) {
+        await frame.requestFullscreen();
+        return;
+      }
+    } catch (error) {
+      console.warn("標準の全画面表示に失敗しました。代替表示に切り替えます。", error);
+    }
+
+    // 標準APIが使えない場合は疑似全画面
+    setPseudoFullscreen(true);
   }
 
   return (
     <main>
       {selected ? (
         <div className="game-layout">
-          <section className="game-main">
+          <section
+            ref={gameMainRef}
+            className={`game-main ${
+              pseudoFullscreen ? "pseudo-fullscreen" : ""
+            }`}
+          >
             <iframe
               className="game-frame"
               src={selected.file}
@@ -310,7 +347,7 @@ function App() {
                 className="toolbar-button"
                 onClick={enterFullscreen}
               >
-                ⛶ 全画面
+                {pseudoFullscreen ? "全画面を終了" : "⛶ 全画面"}
               </button>
             </div>
           </section>
